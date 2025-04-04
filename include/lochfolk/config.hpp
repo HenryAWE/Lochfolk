@@ -1,0 +1,5 @@
+#ifndef LOCHFOLK_CONFIG_HPP
+#define LOCHFOLK_CONFIG_HPP
+
+
+#endif
