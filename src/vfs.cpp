@@ -59,12 +59,21 @@ virtual_file_system::virtual_file_system()
 
 virtual_file_system::~virtual_file_system() = default;
 
-void virtual_file_system::mount_string_constant(path_view p, std::string str)
+void virtual_file_system::mount_string_constant(
+    path_view p, std::string str, bool overwrite
+)
 {
-    mount_impl(p, std::in_place_type<file_node::string_constant>, std::move(str));
+    mount_impl(
+        p,
+        false,
+        std::in_place_type<file_node::string_constant>,
+        std::move(str)
+    );
 }
 
-void virtual_file_system::mount_sys_file(path_view p, const std::filesystem::path& sys_path)
+void virtual_file_system::mount_sys_file(
+    path_view p, const std::filesystem::path& sys_path, bool overwrite
+)
 {
     namespace stdfs = std::filesystem;
 
@@ -74,7 +83,12 @@ void virtual_file_system::mount_sys_file(path_view p, const std::filesystem::pat
     }
     else if(stdfs::is_regular_file(sys_path))
     {
-        mount_impl(p, std::in_place_type<file_node::sys_file>, stdfs::absolute(sys_path));
+        mount_impl(
+            p,
+            overwrite,
+            std::in_place_type<file_node::sys_file>,
+            stdfs::absolute(sys_path)
+        );
     }
     else
     {
@@ -82,7 +96,9 @@ void virtual_file_system::mount_sys_file(path_view p, const std::filesystem::pat
     }
 }
 
-void virtual_file_system::mount_sys_dir(path_view p, const std::filesystem::path& dir)
+void virtual_file_system::mount_sys_dir(
+    path_view p, const std::filesystem::path& dir, bool overwrite
+)
 {
     namespace stdfs = std::filesystem;
 
@@ -99,13 +115,16 @@ void virtual_file_system::mount_sys_dir(path_view p, const std::filesystem::path
         std::u8string filename = stdfs::relative(file_path, dir).generic_u8string();
         mount_impl(
             base / std::string_view((const char*)filename.c_str(), filename.size()),
+            overwrite,
             std::in_place_type<file_node::sys_file>,
             file_path
         );
     }
 }
 
-void virtual_file_system::mount_zip_archive(path_view p, const std::filesystem::path& sys_path)
+void virtual_file_system::mount_zip_archive(
+    path_view p, const std::filesystem::path& sys_path, bool overwrite
+)
 {
     std::shared_ptr ar = std::make_shared<zip_archive>();
     ar->open(sys_path);
@@ -126,6 +145,7 @@ void virtual_file_system::mount_zip_archive(path_view p, const std::filesystem::
 
             mount_impl(
                 base / filename,
+                overwrite,
                 std::in_place_type<file_node::archive_entry>,
                 ar,
                 ar->get_entry_offset()
@@ -246,7 +266,7 @@ const virtual_file_system::file_node* virtual_file_system::mkdir_impl(path_view 
 }
 
 template <typename T, typename... Args>
-auto virtual_file_system::mount_impl(path_view p, std::in_place_type_t<T>, Args&&... args)
+auto virtual_file_system::mount_impl(path_view p, bool overwrite, std::in_place_type_t<T>, Args&&... args)
     -> std::pair<const file_node*, bool>
 {
     static_assert(!std::same_as<T, file_node::directory>, "Cannot mount a directory");
@@ -259,7 +279,12 @@ auto virtual_file_system::mount_impl(path_view p, std::in_place_type_t<T>, Args&
     auto it = dir->children.find(filename);
     if(it != dir->children.end())
     {
-        // TODO: Allowing for overwriting an existed file based on user decision   return std::make_pair(&it->second, false);
+        if(overwrite)
+        {
+            it->second = file_node(
+                current, std::in_place_type<T>, std::forward<Args>(args)...
+            );
+        }
 
         return std::make_pair(&it->second, false);
     }

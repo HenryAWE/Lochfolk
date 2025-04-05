@@ -52,8 +52,27 @@ public:
 
         file_node(file_node&&) noexcept = default;
 
+        file_node& operator=(file_node&& rhs) noexcept
+        {
+            if(this == &rhs) [[unlikely]]
+                return *this;
+
+            m_parent = rhs.m_parent;
+            m_data = std::move(rhs.m_data);
+            return *this;
+        }
+
         struct directory
         {
+            directory() = default;
+
+            directory(directory&&) noexcept = default;
+
+            directory(container_type c) noexcept
+                : children(std::move(c)) {}
+
+            directory& operator=(directory&& rhs) noexcept = default;
+
             container_type children;
         };
 
@@ -61,8 +80,12 @@ public:
         {
             std::string str;
 
+            string_constant(string_constant&&) noexcept = default;
+
             string_constant(std::string str)
                 : str(std::move(str)) {}
+
+            string_constant& operator=(string_constant&& rhs) noexcept = default;
 
             std::unique_ptr<std::stringbuf> open(std::ios_base::openmode) const;
         };
@@ -71,8 +94,13 @@ public:
         {
             std::filesystem::path sys_path;
 
+            sys_file(sys_file&&) noexcept = default;
+
             sys_file(std::filesystem::path sys_path)
-                : sys_path(std::move(sys_path)) {}
+                : sys_path(std::move(sys_path))
+            {}
+
+            sys_file& operator=(sys_file&& rhs) noexcept = default;
 
             std::unique_ptr<std::filebuf> open(std::ios_base::openmode mode) const;
         };
@@ -81,6 +109,22 @@ public:
         {
             std::shared_ptr<archive> archive_ref;
             std::int64_t offset;
+
+            archive_entry(archive_entry&&) noexcept = default;
+
+            archive_entry(std::shared_ptr<archive> ar, std::int64_t off)
+                : archive_ref(std::move(ar)), offset(off) {}
+
+            archive_entry& operator=(archive_entry&& rhs) noexcept
+            {
+                if(this == &rhs) [[unlikely]]
+                    return *this;
+
+                archive_ref = std::move(rhs.archive_ref);
+                offset = std::exchange(rhs.offset, 0);
+
+                return *this;
+            }
 
             std::unique_ptr<std::streambuf> open(std::ios_base::openmode mode) const;
         };
@@ -118,11 +162,11 @@ public:
     ~virtual_file_system();
 
     void mount_string_constant(
-        path_view p, std::string str
+        path_view p, std::string str, bool overwrite = false
     );
 
     void mount_sys_file(
-        path_view p, const std::filesystem::path& sys_path
+        path_view p, const std::filesystem::path& sys_path, bool overwrite = false
     );
 
     /**
@@ -131,11 +175,11 @@ public:
      * @param dir Must be a directory
      */
     void mount_sys_dir(
-        path_view p, const std::filesystem::path& dir
+        path_view p, const std::filesystem::path& dir, bool overwrite = false
     );
 
     void mount_zip_archive(
-        path_view p, const std::filesystem::path& sys_path
+        path_view p, const std::filesystem::path& sys_path, bool overwrite = false
     );
 
     bool exists(path_view p) const;
@@ -161,7 +205,7 @@ private:
     const file_node* mkdir_impl(path_view p);
 
     template <typename T, typename... Args>
-    auto mount_impl(path_view p, std::in_place_type_t<T>, Args&&... args)
+    auto mount_impl(path_view p, bool overwrite, std::in_place_type_t<T>, Args&&... args)
         -> std::pair<const file_node*, bool>;
 };
 } // namespace lochfolk
