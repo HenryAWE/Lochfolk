@@ -2,16 +2,37 @@
 #include <memory>
 #include <cassert>
 #include <fstream>
+#include <lochfolk/utility.hpp>
 #include "zip_archive.hpp"
 
 namespace lochfolk
 {
-std::unique_ptr<std::stringbuf> virtual_file_system::file_node::string_constant::open(
+std::unique_ptr<std::streambuf> virtual_file_system::file_node::string_constant::open(
     std::ios_base::openmode mode
 ) const
 {
     mode &= ~std::ios_base::out;
-    return std::make_unique<std::stringbuf>(str, mode);
+
+    auto sp = std::visit(
+        []<typename T>(T&& v) -> std::span<char>
+        {
+            if constexpr(std::same_as<std::remove_cvref_t<T>, std::string_view>)
+            {
+                return std::span<char>(const_cast<char*>(v.data()), v.size());
+            }
+            else // std::shared_ptr<std::string>
+            {
+                if(!v) [[unlikely]]
+                    return std::span<char>();
+
+                // TODO: guard ownership
+                return *v;
+            }
+        },
+        str
+    );
+
+    return std::make_unique<span_buf>(sp, mode);
 }
 
 std::unique_ptr<std::filebuf> virtual_file_system::file_node::sys_file::open(
@@ -60,7 +81,19 @@ virtual_file_system::virtual_file_system()
 virtual_file_system::~virtual_file_system() = default;
 
 void virtual_file_system::mount_string_constant(
-    path_view p, std::string str, bool overwrite
+    path_view p, std::string_view str, bool overwrite
+)
+{
+    mount_impl(
+        p,
+        false,
+        std::in_place_type<file_node::string_constant>,
+        str
+    );
+}
+
+void virtual_file_system::mount_string_constant(
+    path_view p, std::shared_ptr<std::string> str, bool overwrite
 )
 {
     mount_impl(

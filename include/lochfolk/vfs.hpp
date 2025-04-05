@@ -9,6 +9,7 @@
 #include <memory>
 #include <filesystem>
 #include <variant>
+#include <utility>
 #include "path.hpp"
 #include "archive.hpp"
 
@@ -78,16 +79,23 @@ public:
 
         struct string_constant
         {
-            std::string str;
+            using string_data = std::variant<
+                std::shared_ptr<std::string>,
+                std::string_view>;
+
+            string_data str;
 
             string_constant(string_constant&&) noexcept = default;
 
-            string_constant(std::string str)
-                : str(std::move(str)) {}
+            string_constant(std::shared_ptr<std::string> str_) noexcept
+                : str(std::in_place_index<0>, std::move(str_)) {}
+
+            string_constant(std::string_view str_) noexcept
+                : str(std::in_place_index<1>, str_) {}
 
             string_constant& operator=(string_constant&& rhs) noexcept = default;
 
-            std::unique_ptr<std::stringbuf> open(std::ios_base::openmode) const;
+            std::unique_ptr<std::streambuf> open(std::ios_base::openmode) const;
         };
 
         struct sys_file
@@ -162,7 +170,11 @@ public:
     ~virtual_file_system();
 
     void mount_string_constant(
-        path_view p, std::string str, bool overwrite = false
+        path_view p, std::string_view str, bool overwrite = false
+    );
+
+    void mount_string_constant(
+        path_view p, std::shared_ptr<std::string> str, bool overwrite = false
     );
 
     void mount_sys_file(
