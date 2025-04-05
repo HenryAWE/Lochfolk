@@ -1,3 +1,6 @@
+#ifndef LOCHFOLK_ZIP_ARCHIVE_HPP
+#define LOCHFOLK_ZIP_ARCHIVE_HPP
+
 #pragma once
 
 #include <cassert>
@@ -23,7 +26,7 @@ public:
         static std::string translate_error(std::int32_t err)
         {
 #define LOCHFOLK_TRANSLATE_MZ_ERROR(name) \
-    case name: return #name
+case name: return #name
 
             switch(err)
             {
@@ -223,3 +226,5 @@ private:
     std::unique_ptr<void, stream_deleter> m_stream;
 };
 } // namespace lochfolk
+
+#endif

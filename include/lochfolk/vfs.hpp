@@ -116,24 +116,36 @@ public:
     virtual_file_system();
     virtual_file_system(const virtual_file_system&) = delete;
 
-    void mount_string_constant(path_view p, std::string str);
+    ~virtual_file_system();
 
-    void mount_sys_file(path_view p, const std::filesystem::path& sys_path);
+    void mount_string_constant(
+        path_view p, std::string str
+    );
+
+    void mount_sys_file(
+        path_view p, const std::filesystem::path& sys_path
+    );
 
     /**
      * @brief Recursively mount a directory
      *
      * @param dir Must be a directory
      */
-    void mount_sys_dir(path_view p, const std::filesystem::path& dir);
+    void mount_sys_dir(
+        path_view p, const std::filesystem::path& dir
+    );
 
-    void mount_zip_archive(path_view p, const std::filesystem::path& sys_path);
+    void mount_zip_archive(
+        path_view p, const std::filesystem::path& sys_path
+    );
 
     bool exists(path_view p) const;
 
     bool is_directory(path_view p) const;
 
-    ivfstream read(path_view p, std::ios_base::openmode mode = std::ios_base::binary);
+    ivfstream read(
+        path_view p, std::ios_base::openmode mode = std::ios_base::binary
+    );
 
     /**
      * @brief List all files for debugging
@@ -150,36 +162,8 @@ private:
     const file_node* mkdir_impl(path_view p);
 
     template <typename T, typename... Args>
-    std::pair<const file_node*, bool> mount_impl(path_view p, std::in_place_type_t<T>, Args&&... args)
-    {
-        static_assert(!std::same_as<T, file_node::directory>, "Cannot mount a directory");
-        assert(p.is_absolute());
-        const file_node* current = mkdir_impl(p.parent_path());
-        path_view filename = p.filename();
-
-        auto* dir = current->get_if<file_node::directory>();
-        assert(dir);
-        auto it = dir->children.find(filename);
-        if(it != dir->children.end())
-        {
-            // TODO: Allowing for overwriting an existed file based on user decision   return std::make_pair(&it->second, false);
-
-            return std::make_pair(&it->second, false);
-        }
-        else
-        {
-            auto result = dir->children.emplace(
-                filename,
-                file_node(current, std::in_place_type<T>, std::forward<Args>(args)...)
-            );
-            assert(result.second); // Emplacement should be successful here
-
-            return std::make_pair(
-                &result.first->second,
-                true
-            );
-        }
-    }
+    auto mount_impl(path_view p, std::in_place_type_t<T>, Args&&... args)
+        -> std::pair<const file_node*, bool>;
 };
 } // namespace lochfolk
 

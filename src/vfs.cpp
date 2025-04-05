@@ -51,6 +51,8 @@ virtual_file_system::virtual_file_system()
     assert(m_root.is_directory());
 }
 
+virtual_file_system::~virtual_file_system() = default;
+
 void virtual_file_system::mount_string_constant(path_view p, std::string str)
 {
     mount_impl(p, std::in_place_type<file_node::string_constant>, std::move(str));
@@ -235,5 +237,38 @@ const virtual_file_system::file_node* virtual_file_system::mkdir_impl(path_view 
     }
 
     return current;
+}
+
+template <typename T, typename... Args>
+auto virtual_file_system::mount_impl(path_view p, std::in_place_type_t<T>, Args&&... args)
+    -> std::pair<const file_node*, bool>
+{
+    static_assert(!std::same_as<T, file_node::directory>, "Cannot mount a directory");
+    assert(p.is_absolute());
+    const file_node* current = mkdir_impl(p.parent_path());
+    path_view filename = p.filename();
+
+    auto* dir = current->get_if<file_node::directory>();
+    assert(dir);
+    auto it = dir->children.find(filename);
+    if(it != dir->children.end())
+    {
+        // TODO: Allowing for overwriting an existed file based on user decision   return std::make_pair(&it->second, false);
+
+        return std::make_pair(&it->second, false);
+    }
+    else
+    {
+        auto result = dir->children.emplace(
+            filename,
+            file_node(current, std::in_place_type<T>, std::forward<Args>(args)...)
+        );
+        assert(result.second); // Emplacement should be successful here
+
+        return std::make_pair(
+            &result.first->second,
+            true
+        );
+    }
 }
 } // namespace lochfolk

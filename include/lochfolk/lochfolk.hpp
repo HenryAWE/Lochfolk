@@ -3,10 +3,15 @@
 
 #pragma once
 
+// IWYU pragma: begin_exports
+
 #include <tuple>
-#include <utility>
-#include <filesystem>
-#include "config.hpp" // IWYU pragma: exports
+#include "config.hpp"
+#include "archive.hpp"
+#include "path.hpp"
+#include "vfs.hpp"
+
+// IWYU pragma: end_exports
 
 #define LOCHFOLK_VERSION_MAJOR 0
 #define LOCHFOLK_VERSION_MINOR 1
