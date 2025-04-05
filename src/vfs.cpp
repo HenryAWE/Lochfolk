@@ -6,13 +6,17 @@
 
 namespace lochfolk
 {
-std::unique_ptr<std::stringbuf> virtual_file_system::file_node::string_constant::open(std::ios_base::openmode mode) const
+std::unique_ptr<std::stringbuf> virtual_file_system::file_node::string_constant::open(
+    std::ios_base::openmode mode
+) const
 {
     mode &= ~std::ios_base::out;
     return std::make_unique<std::stringbuf>(str, mode);
 }
 
-std::unique_ptr<std::filebuf> virtual_file_system::file_node::sys_file::open(std::ios_base::openmode mode) const
+std::unique_ptr<std::filebuf> virtual_file_system::file_node::sys_file::open(
+    std::ios_base::openmode mode
+) const
 {
     std::unique_ptr fb = std::make_unique<std::filebuf>();
     fb->open(sys_path, mode);
@@ -22,7 +26,9 @@ std::unique_ptr<std::filebuf> virtual_file_system::file_node::sys_file::open(std
     return fb;
 }
 
-std::unique_ptr<std::streambuf> virtual_file_system::file_node::archive_entry::open(std::ios_base::openmode mode) const
+std::unique_ptr<std::streambuf> virtual_file_system::file_node::archive_entry::open(
+    std::ios_base::openmode mode
+) const
 {
     return archive_ref->getbuf(offset, mode);
 }

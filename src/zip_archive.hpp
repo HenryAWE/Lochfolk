@@ -1,11 +1,10 @@
-#ifndef LOCHFOLK_ZIP_ARCHIVE_HPP
-#define LOCHFOLK_ZIP_ARCHIVE_HPP
+#ifndef LOCHFOLK_SRC_ZIP_ARCHIVE_HPP
+#define LOCHFOLK_SRC_ZIP_ARCHIVE_HPP
 
 #pragma once
 
 #include <cassert>
 #include <span>
-#include <format>
 #include <filesystem>
 #include <minizip/mz.h>
 #include <minizip/mz_zip.h>
@@ -56,8 +55,8 @@ case name: return #name
                 LOCHFOLK_TRANSLATE_MZ_ERROR(MZ_SIGN_ERROR);
                 LOCHFOLK_TRANSLATE_MZ_ERROR(MZ_SYMLINK_ERROR);
 
-            default:
-                return std::format("MZ_ERROR({})", err);
+            [[unlikely]] default:
+                return "MZ_ERROR(" + std::to_string(err) + ')';
             }
 
 #undef LOCHFOLK_TRANSLATE_MZ_ERROR
@@ -106,14 +105,14 @@ case name: return #name
         mz_stream_os_close(m_stream.get());
     }
 
-    bool goto_first()
+    bool goto_first() const
     {
         std::int32_t err = mz_zip_goto_first_entry(m_handle);
         if(err == MZ_END_OF_LIST)
             return false;
         else if(err == MZ_OK)
             return true;
-        else
+        else [[unlikely]]
             throw minizip_error(err);
     }
 
@@ -123,18 +122,18 @@ case name: return #name
      * @return true No error
      * @return false End of file list
      */
-    bool goto_next()
+    bool goto_next() const
     {
         std::int32_t err = mz_zip_goto_next_entry(m_handle);
         if(err == MZ_END_OF_LIST)
             return false;
         else if(err == MZ_OK)
             return true;
-        else
+        else [[unlikely]]
             throw minizip_error(err);
     }
 
-    void goto_entry(std::int64_t offset)
+    void goto_entry(std::int64_t offset) const
     {
         int err = mz_zip_goto_entry(m_handle, offset);
         if(err != MZ_OK)
@@ -151,7 +150,7 @@ case name: return #name
         return mz_zip_get_entry(m_handle);
     }
 
-    const mz_zip_file& get_entry_info()
+    const mz_zip_file& get_entry_info() const
     {
         mz_zip_file* ptr = nullptr;
         int err = mz_zip_entry_get_info(m_handle, &ptr);
@@ -161,7 +160,7 @@ case name: return #name
         return *ptr;
     }
 
-    std::unique_ptr<std::streambuf> get_entry_buf(std::ios_base::openmode mode)
+    std::unique_ptr<std::streambuf> get_entry_buf(std::ios_base::openmode mode) const
     {
         std::string result;
 
@@ -188,14 +187,14 @@ case name: return #name
         return std::make_unique<std::stringbuf>(std::move(result), mode);
     }
 
-    void open_entry()
+    void open_entry() const
     {
         int err = mz_zip_entry_read_open(m_handle, false, nullptr);
         if(err != MZ_OK)
             throw minizip_error(err);
     }
 
-    std::size_t read_entry(std::span<std::byte> buf)
+    std::size_t read_entry(std::span<std::byte> buf) const
     {
         std::int32_t result = mz_zip_entry_read(
             m_handle, buf.data(), static_cast<std::int32_t>(buf.size())
@@ -206,7 +205,7 @@ case name: return #name
         return static_cast<size_t>(result);
     }
 
-    void close_entry() noexcept
+    void close_entry() const noexcept
     {
         mz_zip_entry_close(m_handle);
     }
