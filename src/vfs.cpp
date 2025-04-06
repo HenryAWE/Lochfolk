@@ -7,6 +7,82 @@
 
 namespace lochfolk
 {
+namespace detail
+{
+    std::string stdfs_err_msg(
+        std::string_view prefix,
+        const std::filesystem::path& p,
+        std::string_view suffix = {}
+    )
+    {
+#ifdef _WIN32
+        auto tmp = p.u8string();
+        std::string_view p_sv(
+            reinterpret_cast<const char*>(tmp.c_str()), tmp.size()
+        );
+
+#else
+        std::string_view p_sv = p.native();
+
+#endif
+
+        std::string result;
+        result.reserve(
+            prefix.size() + p_sv.size() + suffix.size() + 2 /* "" */
+        );
+
+        result += prefix;
+        result += '"';
+        result += p_sv;
+        result += '"';
+        result += suffix;
+
+        return result;
+    }
+
+    std::string stdfs_err_msg(
+        const std::filesystem::path& p,
+        std::string_view suffix = {}
+    )
+    {
+        return stdfs_err_msg(
+            std::string_view(), p, suffix
+        );
+    }
+
+    std::string vfs_err_msg(
+        std::string_view prefix,
+        path_view p,
+        std::string_view suffix = {}
+    )
+    {
+        std::string_view p_sv = p;
+
+        std::string result;
+        result.reserve(
+            prefix.size() + p_sv.size() + suffix.size() + 2 /* "" */
+        );
+
+        result += prefix;
+        result += '"';
+        result += p_sv;
+        result += '"';
+        result += suffix;
+
+        return result;
+    }
+
+    std::string vfs_err_msg(
+        path_view p,
+        std::string_view suffix = {}
+    )
+    {
+        return vfs_err_msg(
+            std::string_view(), p, suffix
+        );
+    }
+} // namespace detail
+
 std::unique_ptr<std::streambuf> virtual_file_system::file_node::string_constant::open(
     std::ios_base::openmode mode
 ) const
@@ -37,7 +113,7 @@ std::unique_ptr<std::filebuf> virtual_file_system::file_node::sys_file::open(
     std::unique_ptr fb = std::make_unique<std::filebuf>();
     fb->open(sys_path, mode);
     if(!fb->is_open())
-        throw error("failed to open ");
+        throw error(detail::stdfs_err_msg("failed to open ", sys_path));
 
     return fb;
 }
@@ -81,7 +157,7 @@ void virtual_file_system::mount_string_constant(
 {
     mount_impl(
         p,
-        false,
+        overwrite,
         std::in_place_type<file_node::string_constant>,
         str
     );
@@ -104,7 +180,7 @@ void virtual_file_system::mount_string_constant(
 {
     mount_impl(
         p,
-        false,
+        overwrite,
         std::in_place_type<file_node::string_constant>,
         std::move(str)
     );
@@ -118,7 +194,7 @@ void virtual_file_system::mount_sys_file(
 
     if(!stdfs::exists(sys_path))
     {
-        throw error("not exist");
+        throw error(detail::stdfs_err_msg(sys_path, " does not exist"));
     }
     else if(stdfs::is_regular_file(sys_path))
     {
@@ -131,7 +207,7 @@ void virtual_file_system::mount_sys_file(
     }
     else
     {
-        throw error("not a regular file");
+        throw error(detail::stdfs_err_msg({}, sys_path, " is not a regular file"));
     }
 }
 
@@ -142,7 +218,9 @@ void virtual_file_system::mount_sys_dir(
     namespace stdfs = std::filesystem;
 
     if(!stdfs::is_directory(dir))
-        throw error("is not a directory");
+    {
+        throw error(detail::stdfs_err_msg(dir, " is not a directory"));
+    }
 
     path base(p);
     for(auto& i : stdfs::recursive_directory_iterator(dir))
@@ -216,7 +294,7 @@ ivfstream virtual_file_system::read(path_view p, std::ios_base::openmode mode)
 {
     const file_node* f = find_impl(p);
     if(!f)
-        throw error("not found");
+        throw error(detail::vfs_err_msg(p, " is not found"));
 
     mode |= std::ios_base::in;
     return ivfstream(f->getbuf(mode));
@@ -286,7 +364,7 @@ const virtual_file_system::file_node* virtual_file_system::mkdir_impl(path_view 
         {
             if(!it->second.is_directory())
             {
-                throw error("already exists");
+                throw error(detail::vfs_err_msg(subview, " already exists"));
             }
         }
         else
@@ -305,8 +383,9 @@ const virtual_file_system::file_node* virtual_file_system::mkdir_impl(path_view 
 }
 
 template <typename T, typename... Args>
-auto virtual_file_system::mount_impl(path_view p, bool overwrite, std::in_place_type_t<T>, Args&&... args)
-    -> std::pair<const file_node*, bool>
+auto virtual_file_system::mount_impl(
+    path_view p, bool overwrite, std::in_place_type_t<T>, Args&&... args
+) -> std::pair<const file_node*, bool>
 {
     static_assert(!std::same_as<T, file_node::directory>, "Cannot mount a directory");
     assert(p.is_absolute());
@@ -323,6 +402,8 @@ auto virtual_file_system::mount_impl(path_view p, bool overwrite, std::in_place_
             it->second = file_node(
                 current, std::in_place_type<T>, std::forward<Args>(args)...
             );
+
+            return std::make_pair(&it->second, true);
         }
 
         return std::make_pair(&it->second, false);

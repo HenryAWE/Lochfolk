@@ -170,18 +170,18 @@ public:
     ~virtual_file_system();
 
     void mount_string_constant(
-        path_view p, std::string_view str, bool overwrite = false
+        path_view p, std::string_view str, bool overwrite = true
     );
     void mount_string_constant(
-        path_view p, const char* str, bool overwrite = false
+        path_view p, const char* str, bool overwrite = true
     );
 
     void mount_string_constant(
-        path_view p, std::string str, bool overwrite = false
+        path_view p, std::string str, bool overwrite = true
     );
 
     void mount_sys_file(
-        path_view p, const std::filesystem::path& sys_path, bool overwrite = false
+        path_view p, const std::filesystem::path& sys_path, bool overwrite = true
     );
 
     /**
@@ -190,11 +190,11 @@ public:
      * @param dir Must be a directory
      */
     void mount_sys_dir(
-        path_view p, const std::filesystem::path& dir, bool overwrite = false
+        path_view p, const std::filesystem::path& dir, bool overwrite = true
     );
 
     void mount_zip_archive(
-        path_view p, const std::filesystem::path& sys_path, bool overwrite = false
+        path_view p, const std::filesystem::path& sys_path, bool overwrite = true
     );
 
     bool exists(path_view p) const;

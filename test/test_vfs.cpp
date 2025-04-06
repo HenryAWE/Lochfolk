@@ -19,13 +19,35 @@ TEST(vfs, mount_string_constant)
     EXPECT_TRUE(vfs.exists("/data/text/example.txt"_pv));
     EXPECT_FALSE(vfs.is_directory("/data/text/example.txt"_pv));
 
-    auto vfss = vfs.read("/data/text/example.txt"_pv);
 
     {
+        auto vfss = vfs.read("/data/text/example.txt"_pv);
+
         int v1 = 0, v2 = 0;
         vfss >> v1 >> v2;
         EXPECT_EQ(v1, 123);
         EXPECT_EQ(v2, 456);
+    }
+
+    vfs.mount_string_constant("/data/text/example.txt"_pv, std::string("1013"));
+    EXPECT_TRUE(vfs.exists("/data/text/example.txt"_pv));
+    EXPECT_FALSE(vfs.is_directory("/data/text/example.txt"_pv));
+
+    {
+        auto vfss = vfs.read("/data/text/example.txt"_pv);
+
+        int v = 0;
+        vfss >> v;
+        EXPECT_EQ(v, 1013);
+    }
+
+    try
+    {
+        (void)vfs.read("/data/not/found"_pv);
+    }
+    catch(const lochfolk::virtual_file_system::error& e)
+    {
+        EXPECT_STREQ(e.what(), "\"/data/not/found\" is not found");
     }
 }
 
@@ -70,6 +92,7 @@ TEST(vfs, mount_sys_dir)
     lochfolk::virtual_file_system vfs;
 
     vfs.mount_sys_dir("/data"_pv, "test_vfs_data/dir/");
+    vfs.mount_sys_file("/data/example.txt"_pv, "test_vfs_data/example.txt");
     vfs.list_files(std::cerr);
 
     EXPECT_TRUE(vfs.is_directory("/data/nested"_pv));
@@ -90,6 +113,14 @@ TEST(vfs, mount_sys_dir)
         vfss >> str;
 
         EXPECT_EQ(str, "BBB");
+    }
+
+    {
+        auto vfss = vfs.read("/data/example.txt"_pv);
+
+        int date = 0;
+        vfss >> date;
+        EXPECT_EQ(date, 1013);
     }
 }
 
