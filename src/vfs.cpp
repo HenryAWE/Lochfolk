@@ -13,26 +13,21 @@ std::unique_ptr<std::streambuf> virtual_file_system::file_node::string_constant:
 {
     mode &= ~std::ios_base::out;
 
-    auto sp = std::visit(
-        []<typename T>(T&& v) -> std::span<char>
+    return std::visit(
+        [mode]<typename T>(const T& v) -> std::unique_ptr<std::streambuf>
         {
             if constexpr(std::same_as<std::remove_cvref_t<T>, std::string_view>)
             {
-                return std::span<char>(const_cast<char*>(v.data()), v.size());
+                std::span<char> sp(const_cast<char*>(v.data()), v.size());
+                return std::make_unique<span_buf>(sp, mode);
             }
-            else // std::shared_ptr<std::string>
+            else // std::string
             {
-                if(!v) [[unlikely]]
-                    return std::span<char>();
-
-                // TODO: guard ownership
-                return *v;
+                return std::make_unique<std::stringbuf>(v, mode);
             }
         },
         str
     );
-
-    return std::make_unique<span_buf>(sp, mode);
 }
 
 std::unique_ptr<std::filebuf> virtual_file_system::file_node::sys_file::open(
@@ -93,7 +88,18 @@ void virtual_file_system::mount_string_constant(
 }
 
 void virtual_file_system::mount_string_constant(
-    path_view p, std::shared_ptr<std::string> str, bool overwrite
+    path_view p, const char* str, bool overwrite
+)
+{
+    mount_string_constant(
+        p,
+        std::string_view(str),
+        overwrite
+    );
+}
+
+void virtual_file_system::mount_string_constant(
+    path_view p, std::string str, bool overwrite
 )
 {
     mount_impl(

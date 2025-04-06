@@ -80,14 +80,14 @@ public:
         struct string_constant
         {
             using string_data = std::variant<
-                std::shared_ptr<std::string>,
+                std::string,
                 std::string_view>;
 
             string_data str;
 
             string_constant(string_constant&&) noexcept = default;
 
-            string_constant(std::shared_ptr<std::string> str_) noexcept
+            string_constant(std::string str_) noexcept
                 : str(std::in_place_index<0>, std::move(str_)) {}
 
             string_constant(std::string_view str_) noexcept
@@ -172,9 +172,12 @@ public:
     void mount_string_constant(
         path_view p, std::string_view str, bool overwrite = false
     );
+    void mount_string_constant(
+        path_view p, const char* str, bool overwrite = false
+    );
 
     void mount_string_constant(
-        path_view p, std::shared_ptr<std::string> str, bool overwrite = false
+        path_view p, std::string str, bool overwrite = false
     );
 
     void mount_sys_file(
