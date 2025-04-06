@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <utility>
+#include <limits>
 #include <ios>
 #include <streambuf>
 #include <span>
@@ -48,7 +50,7 @@ public:
           m_mode(other.m_mode),
           m_buf(std::exchange(other.m_buf, std::span<char>()))
     {
-        other.setp(nullptr, nullptr, nullptr);
+        other.setp(nullptr, nullptr);
         other.setg(nullptr, nullptr, nullptr);
     }
 
@@ -60,7 +62,7 @@ public:
             return *this;
 
         m_buf = std::span<char>();
-        this->setp(nullptr, nullptr, nullptr);
+        this->setp(nullptr, nullptr);
         this->setg(nullptr, nullptr, nullptr);
         this->swap(rhs);
 
@@ -94,11 +96,11 @@ public:
         {
             if(m_mode & std::ios_base::ate)
             {
-                my_base::setp(start, stop, stop);
+                my_base::setp(stop, stop);
             }
             else
             {
-                my_base::setp(start, start, stop);
+                my_base::setp(start, stop);
             }
         }
 
