@@ -201,7 +201,7 @@ public:
 
     bool is_directory(path_view p) const;
 
-    ivfstream read(
+    ivfstream open(
         path_view p, std::ios_base::openmode mode = std::ios_base::binary
     );
 

@@ -44,7 +44,23 @@ TEST(path, append)
 
     {
         lochfolk::path p = "/data";
+        p.append("audio/a.wav");
+
+        EXPECT_EQ(p.string(), "/data/audio/a.wav");
+        EXPECT_TRUE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "/data";
         p /= "audio/a.wav"_pv;
+
+        EXPECT_EQ(p.string(), "/data/audio/a.wav");
+        EXPECT_TRUE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "/data";
+        p /= "audio/a.wav";
 
         EXPECT_EQ(p.string(), "/data/audio/a.wav");
         EXPECT_TRUE(p.is_absolute());
@@ -110,6 +126,11 @@ TEST(path, filename)
     EXPECT_EQ("/foo/.bar"_pv.filename(), ".bar"_pv);
     EXPECT_EQ("/foo/bar/"_pv.filename(), ""_pv);
     EXPECT_EQ("/"_pv.filename(), ""_pv);
+
+    EXPECT_EQ(lochfolk::path("/foo/bar.txt").filename(), "bar.txt"_pv);
+    EXPECT_EQ(lochfolk::path("/foo/.bar").filename(), ".bar"_pv);
+    EXPECT_EQ(lochfolk::path("/foo/bar/").filename(), ""_pv);
+    EXPECT_EQ(lochfolk::path("/").filename(), ""_pv);
 }
 
 TEST(path, split_view)

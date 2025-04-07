@@ -12,7 +12,7 @@ lochfolk::virtual_file_system vfs;
 vfs.mount_zip_archive("/archive"_pv, "system/path/to/archive.zip");
 
 {
-    auto vfss = vfs.read("/archive/info.txt"_pv);
+    auto vfss = vfs.open("/archive/info.txt"_pv);
 
     std::string str;
     vfss >> str;
@@ -21,7 +21,7 @@ vfs.mount_zip_archive("/archive"_pv, "system/path/to/archive.zip");
 }
 
 {
-    auto vfss = vfs.read("/archive/data/value.txt"_pv);
+    auto vfss = vfs.open("/archive/data/value.txt"_pv);
 
     int v1 = 0, v2 = 0;
     vfss >> v1 >> v2;
@@ -44,7 +44,7 @@ vfs.list_files(std::cerr);
 assert(vfs.is_directory("/data/nested"_pv));
 
 {
-    auto vfss = vfs.read("/data/a.txt"_pv);
+    auto vfss = vfs.open("/data/a.txt"_pv);
 
     std::string str;
     vfss >> str;
@@ -53,7 +53,7 @@ assert(vfs.is_directory("/data/nested"_pv));
 }
 
 {
-    auto vfss = vfs.read("/data/nested/b.txt"_pv);
+    auto vfss = vfs.open("/data/nested/b.txt"_pv);
 
     std::string str;
     vfss >> str;
@@ -62,7 +62,7 @@ assert(vfs.is_directory("/data/nested"_pv));
 }
 
 {
-    auto vfss = vfs.read("/data/example.txt"_pv);
+    auto vfss = vfs.open("/data/example.txt"_pv);
 
     int v = 0;
     vfss >> v;
@@ -83,7 +83,7 @@ assert(vfs.exists("/data/text/example.txt"_pv));
 assert(!vfs.is_directory("/data/text/example.txt"_pv));
 
 {
-    auto vfss = vfs.read("/data/text/example.txt"_pv);
+    auto vfss = vfs.open("/data/text/example.txt"_pv);
 
     int v1 = 0, v2 = 0;
     vfss >> v1 >> v2;

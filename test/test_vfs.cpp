@@ -21,7 +21,7 @@ TEST(vfs, mount_string_constant)
 
 
     {
-        auto vfss = vfs.read("/data/text/example.txt"_pv);
+        auto vfss = vfs.open("/data/text/example.txt"_pv);
 
         int v1 = 0, v2 = 0;
         vfss >> v1 >> v2;
@@ -34,7 +34,18 @@ TEST(vfs, mount_string_constant)
     EXPECT_FALSE(vfs.is_directory("/data/text/example.txt"_pv));
 
     {
-        auto vfss = vfs.read("/data/text/example.txt"_pv);
+        auto vfss = vfs.open("/data/text/example.txt"_pv);
+
+        int v = 0;
+        vfss >> v;
+        EXPECT_EQ(v, 1013);
+    }
+
+    // Test move constructor
+    {
+        auto src = vfs.open("/data/text/example.txt"_pv);
+        auto vfss = std::move(src);
+        EXPECT_EQ(src.rdbuf(), nullptr);
 
         int v = 0;
         vfss >> v;
@@ -43,7 +54,7 @@ TEST(vfs, mount_string_constant)
 
     try
     {
-        (void)vfs.read("/data/not/found"_pv);
+        (void)vfs.open("/data/not/found"_pv);
     }
     catch(const lochfolk::virtual_file_system::error& e)
     {
@@ -69,7 +80,7 @@ TEST(vfs, mount_sys_file)
 
 
     {
-        auto vfss = vfs.read("/text/example.txt"_pv);
+        auto vfss = vfs.open("/text/example.txt"_pv);
 
         int date = 0;
         vfss >> date;
@@ -77,7 +88,7 @@ TEST(vfs, mount_sys_file)
     }
 
     {
-        auto vfss = vfs.read("/text/example.txt"_pv);
+        auto vfss = vfs.open("/text/example.txt"_pv);
 
         char buf[4];
         vfss.read(buf, 4);
@@ -98,7 +109,7 @@ TEST(vfs, mount_sys_dir)
     EXPECT_TRUE(vfs.is_directory("/data/nested"_pv));
 
     {
-        auto vfss = vfs.read("/data/a.txt"_pv);
+        auto vfss = vfs.open("/data/a.txt"_pv);
 
         std::string str;
         vfss >> str;
@@ -107,7 +118,7 @@ TEST(vfs, mount_sys_dir)
     }
 
     {
-        auto vfss = vfs.read("/data/nested/b.txt"_pv);
+        auto vfss = vfs.open("/data/nested/b.txt"_pv);
 
         std::string str;
         vfss >> str;
@@ -116,7 +127,7 @@ TEST(vfs, mount_sys_dir)
     }
 
     {
-        auto vfss = vfs.read("/data/example.txt"_pv);
+        auto vfss = vfs.open("/data/example.txt"_pv);
 
         int date = 0;
         vfss >> date;
@@ -136,7 +147,7 @@ TEST(vfs, mount_zip_archive)
     EXPECT_TRUE(vfs.is_directory("/archive"_pv));
 
     {
-        auto vfss = vfs.read("/archive/info.txt"_pv);
+        auto vfss = vfs.open("/archive/info.txt"_pv);
 
         std::string str;
         vfss >> str;
@@ -145,7 +156,7 @@ TEST(vfs, mount_zip_archive)
     }
 
     {
-        auto vfss = vfs.read("/archive/data/value.txt"_pv);
+        auto vfss = vfs.open("/archive/data/value.txt"_pv);
 
         int v1 = 0, v2 = 0;
         vfss >> v1 >> v2;

@@ -176,6 +176,11 @@ public:
         return path_view(*this).parent_path();
     }
 
+    constexpr path filename() const
+    {
+        return path_view(*this).filename();
+    }
+
     constexpr auto split_view() const
     {
         return detail::path_split_view(m_str) |

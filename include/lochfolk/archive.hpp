@@ -26,6 +26,10 @@ class ivfstream : public std::istream
     using my_base = std::istream;
 
 public:
+    ivfstream() = delete;
+
+    ivfstream(ivfstream&& other) noexcept;
+
     ivfstream(std::unique_ptr<std::streambuf> buf);
 
     ~ivfstream();

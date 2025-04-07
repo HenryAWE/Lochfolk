@@ -6,6 +6,9 @@ archive::archive() = default;
 
 archive::~archive() = default;
 
+ivfstream::ivfstream(ivfstream&& other) noexcept
+    : my_base(other.rdbuf(nullptr)) {}
+
 ivfstream::ivfstream(std::unique_ptr<std::streambuf> buf)
     : my_base(buf.release()) {}
 

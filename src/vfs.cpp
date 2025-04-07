@@ -290,7 +290,7 @@ bool virtual_file_system::is_directory(path_view p) const
     return f->is_directory();
 }
 
-ivfstream virtual_file_system::read(path_view p, std::ios_base::openmode mode)
+ivfstream virtual_file_system::open(path_view p, std::ios_base::openmode mode)
 {
     const file_node* f = find_impl(p);
     if(!f)
