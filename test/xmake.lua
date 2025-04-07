@@ -1,6 +1,7 @@
 add_requires("gtest")
 
 target("test_path")
+    set_warnings("all", "error")
     set_kind("binary")
     set_default(false)
     add_packages("gtest")
@@ -9,6 +10,7 @@ target("test_path")
     add_tests("test_lochfolk")
 
 target("test_vfs")
+    set_warnings("all", "error")
     set_kind("binary")
     set_default(false)
     add_packages("gtest")

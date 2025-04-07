@@ -18,7 +18,7 @@ namespace lochfolk
 class virtual_file_system
 {
 public:
-    struct file_node;
+    class file_node;
 
     struct string_compare
     {

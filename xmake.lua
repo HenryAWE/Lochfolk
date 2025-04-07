@@ -5,6 +5,7 @@ set_languages("c++20")
 add_requires("minizip-ng")
 
 target("lochfolk")
+    set_warnings("all", "error")
     set_kind("static")
     add_includedirs("include", { public = true })
     add_packages("minizip-ng")
