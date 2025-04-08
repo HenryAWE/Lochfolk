@@ -12,7 +12,7 @@ target("lochfolk")
     add_files("src/*.cpp")
 
 option("unit_test")
-    set_default(false)
+    set_default(true)
     set_showmenu(true)
     set_description("Enable unit tests building")
 
