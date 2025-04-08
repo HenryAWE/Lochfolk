@@ -3,7 +3,6 @@
 #include <cassert>
 #include <fstream>
 #include <lochfolk/utility.hpp>
-#include "zip_archive.hpp"
 
 namespace lochfolk
 {
@@ -257,8 +256,7 @@ void virtual_file_system::mount_zip_archive(
         ar->open_entry();
         try
         {
-            const mz_zip_file& info = ar->get_entry_info();
-            std::string_view filename(info.filename, info.filename_size);
+            std::string_view filename = ar->entry_filename();
 
             mount_impl(
                 base / filename,

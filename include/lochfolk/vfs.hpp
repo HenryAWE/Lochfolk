@@ -12,6 +12,7 @@
 #include <utility>
 #include "path.hpp"
 #include "archive.hpp"
+#include "stream.hpp"
 
 namespace lochfolk
 {
