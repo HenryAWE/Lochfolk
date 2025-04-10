@@ -76,6 +76,11 @@ public:
             directory& operator=(directory&& rhs) noexcept = default;
 
             container_type children;
+
+            /**
+             * @brief Always returns 0
+             */
+            std::uint64_t file_size() const noexcept;
         };
 
         struct string_constant
@@ -97,6 +102,8 @@ public:
             string_constant& operator=(string_constant&& rhs) noexcept = default;
 
             std::unique_ptr<std::streambuf> open(std::ios_base::openmode) const;
+
+            std::uint64_t file_size() const;
         };
 
         struct sys_file
@@ -112,6 +119,8 @@ public:
             sys_file& operator=(sys_file&& rhs) noexcept = default;
 
             std::unique_ptr<std::filebuf> open(std::ios_base::openmode mode) const;
+
+            std::uint64_t file_size() const;
         };
 
         struct archive_entry
@@ -136,6 +145,8 @@ public:
             }
 
             std::unique_ptr<std::streambuf> open(std::ios_base::openmode mode) const;
+
+            std::uint64_t file_size() const;
         };
 
         using data_type = std::variant<
@@ -157,6 +168,8 @@ public:
         }
 
         bool is_directory() const noexcept;
+
+        std::uint64_t file_size() const;
 
         std::unique_ptr<std::streambuf> getbuf(std::ios_base::openmode mode) const;
 
@@ -201,6 +214,8 @@ public:
     bool exists(path_view p) const;
 
     bool is_directory(path_view p) const;
+
+    std::uint64_t file_size(path_view p) const;
 
     ivfstream open(
         path_view p, std::ios_base::openmode mode = std::ios_base::binary

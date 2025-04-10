@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <cstdint>
+#include <cstddef>
 #include <span>
 #include <iostream>
 #include <memory>
@@ -20,7 +22,11 @@ public:
 
     virtual std::unique_ptr<std::streambuf> getbuf(
         std::int64_t offset, std::ios_base::openmode mode
-    ) = 0;
+    ) const = 0;
+
+    virtual std::uint64_t get_file_size(
+        std::int64_t offset
+    ) const = 0;
 };
 
 class zip_archive : public archive
@@ -49,7 +55,11 @@ public:
 
     ~zip_archive();
 
-    std::unique_ptr<std::streambuf> getbuf(std::int64_t offset, std::ios_base::openmode mode) override;
+    std::unique_ptr<std::streambuf> getbuf(
+        std::int64_t offset, std::ios_base::openmode mode
+    ) const override;
+
+    std::uint64_t get_file_size(std::int64_t offset) const override;
 
     void open(const std::filesystem::path& sys_path);
 
@@ -77,10 +87,14 @@ public:
 
     std::size_t read_entry(std::span<std::byte> buf) const;
 
+    /**
+     * @brief Uncompressed file size
+     */
+    std::uint64_t entry_file_size() const;
+
     std::string_view entry_filename() const;
 
     void close_entry() const noexcept;
-
 
 private:
     struct stream_deleter

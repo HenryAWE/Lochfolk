@@ -81,11 +81,19 @@ zip_archive::~zip_archive()
     m_stream.reset();
 }
 
-std::unique_ptr<std::streambuf> zip_archive::getbuf(std::int64_t offset, std::ios_base::openmode mode)
+std::unique_ptr<std::streambuf> zip_archive::getbuf(
+    std::int64_t offset, std::ios_base::openmode mode
+) const
 {
     goto_entry(offset);
     mode &= ~std::ios_base::out;
     return get_entry_buf(mode);
+}
+
+std::uint64_t zip_archive::get_file_size(std::int64_t offset) const
+{
+    goto_entry(offset);
+    return entry_file_size();
 }
 
 void zip_archive::open(const std::filesystem::path& sys_path)
@@ -120,12 +128,6 @@ bool zip_archive::goto_first() const
         throw minizip_error(err);
 }
 
-/**
-     * @brief Goto next entry
-     *
-     * @return true No error
-     * @return false End of file list
-     */
 bool zip_archive::goto_next() const
 {
     std::int32_t err = mz_zip_goto_next_entry(m_handle);
@@ -197,6 +199,13 @@ std::size_t zip_archive::read_entry(std::span<std::byte> buf) const
         throw minizip_error(result);
 
     return static_cast<size_t>(result);
+}
+
+std::uint64_t zip_archive::entry_file_size() const
+{
+    const auto& info = detail::get_entry_info(m_handle);
+
+    return static_cast<std::uint64_t>(info.uncompressed_size);
 }
 
 std::string_view zip_archive::entry_filename() const

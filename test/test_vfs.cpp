@@ -19,6 +19,7 @@ TEST(vfs, mount_string_constant)
     EXPECT_TRUE(vfs.exists("/data/text/example.txt"_pv));
     EXPECT_FALSE(vfs.is_directory("/data/text/example.txt"_pv));
 
+    EXPECT_EQ(vfs.file_size("/data/text/example.txt"_pv), 7);
 
     {
         auto vfss = vfs.open("/data/text/example.txt"_pv);
@@ -78,6 +79,10 @@ TEST(vfs, mount_sys_file)
     EXPECT_TRUE(vfs.exists("/text/example.txt"_pv));
     EXPECT_FALSE(vfs.is_directory("/text/example.txt"_pv));
 
+    EXPECT_EQ(
+        vfs.file_size("/text/example.txt"_pv),
+        static_cast<std::uint64_t>(std::filesystem::file_size("test_vfs_data/example.txt"))
+    );
 
     {
         auto vfss = vfs.open("/text/example.txt"_pv);

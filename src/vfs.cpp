@@ -82,6 +82,11 @@ namespace detail
     }
 } // namespace detail
 
+std::uint64_t virtual_file_system::file_node::directory::file_size() const noexcept
+{
+    return 0;
+}
+
 std::unique_ptr<std::streambuf> virtual_file_system::file_node::string_constant::open(
     std::ios_base::openmode mode
 ) const
@@ -105,6 +110,17 @@ std::unique_ptr<std::streambuf> virtual_file_system::file_node::string_constant:
     );
 }
 
+std::uint64_t virtual_file_system::file_node::string_constant::file_size() const
+{
+    return std::visit(
+        [](const auto& v) -> std::uint64_t
+        {
+            return static_cast<std::uint64_t>(v.size());
+        },
+        str
+    );
+}
+
 std::unique_ptr<std::filebuf> virtual_file_system::file_node::sys_file::open(
     std::ios_base::openmode mode
 ) const
@@ -117,6 +133,13 @@ std::unique_ptr<std::filebuf> virtual_file_system::file_node::sys_file::open(
     return fb;
 }
 
+std::uint64_t virtual_file_system::file_node::sys_file::file_size() const
+{
+    return static_cast<std::uint64_t>(
+        std::filesystem::file_size(sys_path)
+    );
+}
+
 std::unique_ptr<std::streambuf> virtual_file_system::file_node::archive_entry::open(
     std::ios_base::openmode mode
 ) const
@@ -124,12 +147,30 @@ std::unique_ptr<std::streambuf> virtual_file_system::file_node::archive_entry::o
     return archive_ref->getbuf(offset, mode);
 }
 
+std::uint64_t virtual_file_system::file_node::archive_entry::file_size() const
+{
+    return archive_ref->get_file_size(offset);
+}
+
 bool virtual_file_system::file_node::is_directory() const noexcept
 {
     return std::holds_alternative<directory>(m_data);
 }
 
-std::unique_ptr<std::streambuf> virtual_file_system::file_node::getbuf(std::ios_base::openmode mode) const
+std::uint64_t virtual_file_system::file_node::file_size() const
+{
+    return std::visit(
+        [](const auto& v) -> std::uint64_t
+        {
+            return v.file_size();
+        },
+        m_data
+    );
+}
+
+std::unique_ptr<std::streambuf> virtual_file_system::file_node::getbuf(
+    std::ios_base::openmode mode
+) const
 {
     return visit(
         [mode]<typename T>(const T& data) -> std::unique_ptr<std::streambuf>
@@ -286,6 +327,15 @@ bool virtual_file_system::is_directory(path_view p) const
     if(!f)
         return false;
     return f->is_directory();
+}
+
+std::uint64_t virtual_file_system::file_size(path_view p) const
+{
+    const file_node* f = find_impl(p);
+    if(!f) [[unlikely]]
+        throw error(detail::vfs_err_msg(p, " is not found"));
+
+    return f->file_size();
 }
 
 ivfstream virtual_file_system::open(path_view p, std::ios_base::openmode mode)
