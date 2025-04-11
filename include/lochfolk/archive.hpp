@@ -63,7 +63,7 @@ public:
 
     void open(const std::filesystem::path& sys_path);
 
-    void close();
+    void close() noexcept;
 
     bool goto_first() const;
 
@@ -97,12 +97,17 @@ public:
     void close_entry() const noexcept;
 
 private:
+    struct handle_deleter
+    {
+        void operator()(void* stream) const noexcept;
+    };
+
     struct stream_deleter
     {
         void operator()(void* stream) const noexcept;
     };
 
-    void* m_handle;
+    std::unique_ptr<void, handle_deleter> m_handle;
     std::unique_ptr<void, stream_deleter> m_stream;
 };
 } // namespace lochfolk

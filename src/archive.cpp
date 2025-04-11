@@ -77,7 +77,7 @@ zip_archive::zip_archive()
 zip_archive::~zip_archive()
 {
     close();
-    mz_zip_delete(&m_handle);
+    m_handle.reset();
     m_stream.reset();
 }
 
@@ -106,20 +106,20 @@ void zip_archive::open(const std::filesystem::path& sys_path)
     if(err != MZ_OK)
         throw minizip_error(err);
 
-    err = mz_zip_open(m_handle, m_stream.get(), MZ_OPEN_MODE_READ);
+    err = mz_zip_open(m_handle.get(), m_stream.get(), MZ_OPEN_MODE_READ);
     if(err != MZ_OK)
         throw minizip_error(err);
 }
 
-void zip_archive::close()
+void zip_archive::close() noexcept
 {
-    mz_zip_close(m_handle);
+    mz_zip_close(m_handle.get());
     mz_stream_os_close(m_stream.get());
 }
 
 bool zip_archive::goto_first() const
 {
-    std::int32_t err = mz_zip_goto_first_entry(m_handle);
+    std::int32_t err = mz_zip_goto_first_entry(m_handle.get());
     if(err == MZ_END_OF_LIST)
         return false;
     else if(err == MZ_OK)
@@ -130,7 +130,7 @@ bool zip_archive::goto_first() const
 
 bool zip_archive::goto_next() const
 {
-    std::int32_t err = mz_zip_goto_next_entry(m_handle);
+    std::int32_t err = mz_zip_goto_next_entry(m_handle.get());
     if(err == MZ_END_OF_LIST)
         return false;
     else if(err == MZ_OK)
@@ -141,19 +141,19 @@ bool zip_archive::goto_next() const
 
 void zip_archive::goto_entry(std::int64_t offset) const
 {
-    int err = mz_zip_goto_entry(m_handle, offset);
+    int err = mz_zip_goto_entry(m_handle.get(), offset);
     if(err != MZ_OK)
         throw minizip_error(err);
 }
 
 bool zip_archive::entry_is_dir() const
 {
-    return mz_zip_entry_is_dir(m_handle) == MZ_OK;
+    return mz_zip_entry_is_dir(m_handle.get()) == MZ_OK;
 }
 
 std::int64_t zip_archive::get_entry_offset() const
 {
-    return mz_zip_get_entry(m_handle);
+    return mz_zip_get_entry(m_handle.get());
 }
 
 std::unique_ptr<std::streambuf> zip_archive::get_entry_buf(std::ios_base::openmode mode) const
@@ -185,7 +185,7 @@ std::unique_ptr<std::streambuf> zip_archive::get_entry_buf(std::ios_base::openmo
 
 void zip_archive::open_entry() const
 {
-    int err = mz_zip_entry_read_open(m_handle, false, nullptr);
+    int err = mz_zip_entry_read_open(m_handle.get(), false, nullptr);
     if(err != MZ_OK)
         throw minizip_error(err);
 }
@@ -193,7 +193,7 @@ void zip_archive::open_entry() const
 std::size_t zip_archive::read_entry(std::span<std::byte> buf) const
 {
     std::int32_t result = mz_zip_entry_read(
-        m_handle, buf.data(), static_cast<std::int32_t>(buf.size())
+        m_handle.get(), buf.data(), static_cast<std::int32_t>(buf.size())
     );
     if(result < 0)
         throw minizip_error(result);
@@ -203,23 +203,29 @@ std::size_t zip_archive::read_entry(std::span<std::byte> buf) const
 
 std::uint64_t zip_archive::entry_file_size() const
 {
-    const auto& info = detail::get_entry_info(m_handle);
+    const auto& info = detail::get_entry_info(m_handle.get());
 
     return static_cast<std::uint64_t>(info.uncompressed_size);
 }
 
 std::string_view zip_archive::entry_filename() const
 {
-    const auto& info = detail::get_entry_info(m_handle);
+    const auto& info = detail::get_entry_info(m_handle.get());
 
     return std::string_view(info.filename, info.filename_size);
 }
 
 void zip_archive::close_entry() const noexcept
 {
-    mz_zip_entry_close(m_handle);
+    mz_zip_entry_close(m_handle.get());
 }
 
+void zip_archive::handle_deleter::operator()(void* handle) const noexcept
+{
+    if(!handle) [[unlikely]]
+        return;
+    mz_zip_delete(&handle);
+}
 void zip_archive::stream_deleter::operator()(void* stream) const noexcept
 {
     if(!stream) [[unlikely]]
