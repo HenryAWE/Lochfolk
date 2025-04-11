@@ -292,27 +292,19 @@ void virtual_file_system::mount_zip_archive(
         return; // Empty archive
     do
     {
-        if(ar->entry_is_dir())
+        if(ar->current_is_dir())
             continue;
-        ar->open_entry();
-        try
-        {
-            std::string_view filename = ar->entry_filename();
 
-            mount_impl(
-                base / filename,
-                overwrite,
-                std::in_place_type<file_node::archive_entry>,
-                ar,
-                ar->get_entry_offset()
-            );
-        }
-        catch(...)
-        {
-            ar->close_entry();
-            throw;
-        }
-        ar->close_entry();
+        auto entry = ar->open_current();
+        std::string_view filename = entry.filename();
+
+        mount_impl(
+            base / filename,
+            overwrite,
+            std::in_place_type<file_node::archive_entry>,
+            ar,
+            entry.offset()
+        );
     } while(ar->goto_next());
 }
 

@@ -13,6 +13,16 @@ archive::archive() = default;
 
 archive::~archive() = default;
 
+std::unique_ptr<std::streambuf> archive::getbuf(
+    std::int64_t offset, std::ios_base::openmode mode
+) const
+{
+    mode &= ~std::ios_base::out;
+    return std::make_unique<std::stringbuf>(
+        read_string(offset), mode
+    );
+}
+
 namespace detail
 {
     const mz_zip_file& get_entry_info(void* handle)
@@ -81,13 +91,38 @@ zip_archive::~zip_archive()
     m_stream.reset();
 }
 
-std::unique_ptr<std::streambuf> zip_archive::getbuf(
-    std::int64_t offset, std::ios_base::openmode mode
-) const
+std::string zip_archive::read_string(std::int64_t offset) const
 {
+    std::string result;
+
     goto_entry(offset);
-    mode &= ~std::ios_base::out;
-    return get_entry_buf(mode);
+    auto entry = open_current();
+
+    std::size_t sz = entry.file_size();
+    result.resize(sz);
+    sz = entry.read(
+        std::span(reinterpret_cast<std::byte*>(result.data()), result.size())
+    );
+    if(sz != result.size()) [[unlikely]]
+        result.resize(sz);
+
+    return result;
+}
+
+std::vector<std::byte> zip_archive::read_bytes(std::int64_t offset) const
+{
+    std::vector<std::byte> result;
+
+    goto_entry(offset);
+    auto entry = open_current();
+
+    std::size_t sz = entry.file_size();
+    result.resize(sz);
+    sz = entry.read(result);
+    if(sz != result.size()) [[unlikely]]
+        result.resize(sz);
+
+    return result;
 }
 
 std::uint64_t zip_archive::get_file_size(std::int64_t offset) const
@@ -146,41 +181,14 @@ void zip_archive::goto_entry(std::int64_t offset) const
         throw minizip_error(err);
 }
 
-bool zip_archive::entry_is_dir() const
+bool zip_archive::current_is_dir() const
 {
     return mz_zip_entry_is_dir(m_handle.get()) == MZ_OK;
 }
 
-std::int64_t zip_archive::get_entry_offset() const
+std::int64_t zip_archive::current_offset() const
 {
     return mz_zip_get_entry(m_handle.get());
-}
-
-std::unique_ptr<std::streambuf> zip_archive::get_entry_buf(std::ios_base::openmode mode) const
-{
-    std::string result;
-
-    open_entry();
-    try
-    {
-        while(true)
-        {
-            std::byte buf[512];
-            std::size_t len = read_entry(buf);
-            if(len == 0)
-                break;
-
-            result.append(reinterpret_cast<char*>(buf), len);
-        }
-        close_entry();
-    }
-    catch(...)
-    {
-        close_entry();
-        throw;
-    }
-
-    return std::make_unique<std::stringbuf>(std::move(result), mode);
 }
 
 void zip_archive::open_entry() const
@@ -226,6 +234,7 @@ void zip_archive::handle_deleter::operator()(void* handle) const noexcept
         return;
     mz_zip_delete(&handle);
 }
+
 void zip_archive::stream_deleter::operator()(void* stream) const noexcept
 {
     if(!stream) [[unlikely]]
