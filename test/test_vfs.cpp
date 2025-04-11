@@ -30,6 +30,12 @@ TEST(vfs, mount_string_constant)
         EXPECT_EQ(v2, 456);
     }
 
+    {
+        std::string str = vfs.read_string("/data/text/example.txt"_pv);
+
+        EXPECT_EQ(str, "123 456");
+    }
+
     vfs.mount_string_constant("/data/text/example.txt"_pv, std::string("1013"));
     EXPECT_TRUE(vfs.exists("/data/text/example.txt"_pv));
     EXPECT_FALSE(vfs.is_directory("/data/text/example.txt"_pv));
@@ -103,6 +109,12 @@ TEST(vfs, mount_sys_file)
         vfss.read(buf, 4);
         EXPECT_EQ(std::string_view(buf, 4), "1013");
     }
+
+    {
+        std::string str = vfs.read_string("/text/example.txt"_pv);
+
+        EXPECT_EQ(str, "1013\n");
+    }
 }
 
 TEST(vfs, mount_sys_dir)
@@ -133,6 +145,12 @@ TEST(vfs, mount_sys_dir)
         vfss >> str;
 
         EXPECT_EQ(str, "BBB");
+    }
+
+    {
+        std::string str = vfs.read_string("/data/nested/b.txt"_pv);
+
+        EXPECT_EQ(str, "BBB\n");
     }
 
     {

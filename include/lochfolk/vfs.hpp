@@ -103,6 +103,8 @@ public:
 
             std::unique_ptr<std::streambuf> open(std::ios_base::openmode) const;
 
+            std::string read_string(bool convert_crlf) const;
+
             std::uint64_t file_size() const;
         };
 
@@ -119,6 +121,8 @@ public:
             sys_file& operator=(sys_file&& rhs) noexcept = default;
 
             std::unique_ptr<std::filebuf> open(std::ios_base::openmode mode) const;
+
+            std::string read_string(bool convert_crlf) const;
 
             std::uint64_t file_size() const;
         };
@@ -146,6 +150,8 @@ public:
 
             std::unique_ptr<std::streambuf> open(std::ios_base::openmode mode) const;
 
+            std::string read_string(bool convert_crlf) const;
+
             std::uint64_t file_size() const;
         };
 
@@ -172,6 +178,8 @@ public:
         std::uint64_t file_size() const;
 
         std::unique_ptr<std::streambuf> getbuf(std::ios_base::openmode mode) const;
+
+        std::string read_string(bool convert_crlf) const;
 
     private:
         const file_node* m_parent;
@@ -222,6 +230,14 @@ public:
     ivfstream open(
         path_view p, std::ios_base::openmode mode = std::ios_base::binary
     );
+
+    /**
+     * @brief Read string from virtual file
+     *
+     * @param p Path
+     * @param convert_crlf Convert CRLF to LF for system files on Windows
+     */
+    std::string read_string(path_view p, bool convert_crlf = true);
 
     /**
      * @brief List all files for debugging

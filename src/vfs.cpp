@@ -110,6 +110,16 @@ std::unique_ptr<std::streambuf> virtual_file_system::file_node::string_constant:
     );
 }
 
+std::string virtual_file_system::file_node::string_constant::read_string(bool convert_crlf) const
+{
+    (void)convert_crlf;
+    return std::visit(
+        [](const auto& v)
+        { return std::string(v); },
+        str
+    );
+}
+
 std::uint64_t virtual_file_system::file_node::string_constant::file_size() const
 {
     return std::visit(
@@ -133,6 +143,21 @@ std::unique_ptr<std::filebuf> virtual_file_system::file_node::sys_file::open(
     return fb;
 }
 
+std::string virtual_file_system::file_node::sys_file::read_string(bool convert_crlf) const
+{
+    std::ios_base::openmode mode = std::ios_base::in;
+    if(!convert_crlf)
+        mode |= std::ios_base::binary;
+
+    std::ifstream ifs(sys_path, mode);
+    if(!ifs.is_open()) [[unlikely]]
+        throw error(detail::stdfs_err_msg("failed to open ", sys_path));
+
+    std::stringstream ss;
+    ss << ifs.rdbuf();
+    return std::move(ss).str();
+}
+
 std::uint64_t virtual_file_system::file_node::sys_file::file_size() const
 {
     return static_cast<std::uint64_t>(
@@ -145,6 +170,12 @@ std::unique_ptr<std::streambuf> virtual_file_system::file_node::archive_entry::o
 ) const
 {
     return archive_ref->getbuf(offset, mode);
+}
+
+std::string virtual_file_system::file_node::archive_entry::read_string(bool convert_crlf) const
+{
+    (void)convert_crlf;
+    return archive_ref->read_string(offset);
 }
 
 std::uint64_t virtual_file_system::file_node::archive_entry::file_size() const
@@ -173,11 +204,24 @@ std::unique_ptr<std::streambuf> virtual_file_system::file_node::getbuf(
 ) const
 {
     return visit(
-        [mode]<typename T>(const T& data) -> std::unique_ptr<std::streambuf>
+        [mode]<typename T>(const T& v) -> std::unique_ptr<std::streambuf>
         {
-            constexpr bool has_buf = requires() { data.open(mode); };
+            constexpr bool has_buf = requires() { v.open(mode); };
             if constexpr(has_buf)
-                return data.open(mode);
+                return v.open(mode);
+            throw error("bad file");
+        }
+    );
+}
+
+std::string virtual_file_system::file_node::read_string(bool convert_crlf) const
+{
+    return visit(
+        [convert_crlf]<typename T>(const T& v) -> std::string
+        {
+            constexpr bool has_read_string = requires() { v.read_string(convert_crlf); };
+            if constexpr(has_read_string)
+                return v.read_string(convert_crlf);
             throw error("bad file");
         }
     );
@@ -364,6 +408,15 @@ ivfstream virtual_file_system::open(path_view p, std::ios_base::openmode mode)
 
     mode |= std::ios_base::in;
     return ivfstream(f->getbuf(mode));
+}
+
+std::string virtual_file_system::read_string(path_view p, bool convert_crlf)
+{
+    const file_node* f = find_impl(p);
+    if(!f)
+        throw error(detail::vfs_err_msg(p, " is not found"));
+
+    return f->read_string(convert_crlf);
 }
 
 void virtual_file_system::list_files(std::ostream& os)
