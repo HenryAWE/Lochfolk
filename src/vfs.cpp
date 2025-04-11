@@ -330,6 +330,32 @@ std::uint64_t virtual_file_system::file_size(path_view p) const
     return f->file_size();
 }
 
+bool virtual_file_system::remove(path_view p)
+{
+    if(p.empty() || !p.is_absolute()) [[unlikely]]
+        return false;
+    if(p == "/"_pv)
+    {
+        auto* root_dir = m_root.get_if<file_node::directory>();
+        assert(root_dir);
+
+        root_dir->children.clear();
+        return true;
+    }
+
+    auto* parent = find_impl(p.parent_path());
+    if(!parent->is_directory())
+        return false;
+
+    auto* parent_dir = parent->get_if<file_node::directory>();
+    auto it = parent_dir->children.find(p.filename());
+    if(it == parent_dir->children.end())
+        return false;
+
+    parent_dir->children.erase(it);
+    return true;
+}
+
 ivfstream virtual_file_system::open(path_view p, std::ios_base::openmode mode)
 {
     const file_node* f = find_impl(p);

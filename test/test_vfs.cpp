@@ -61,6 +61,10 @@ TEST(vfs, mount_string_constant)
     {
         EXPECT_STREQ(e.what(), "\"/data/not/found\" is not found");
     }
+
+    EXPECT_TRUE(vfs.remove("/data/text/example.txt"_pv));
+    EXPECT_FALSE(vfs.remove("/data/text/example.txt"_pv));
+    EXPECT_FALSE(vfs.exists("/data/text/example.txt"_pv));
 }
 
 TEST(vfs, mount_sys_file)

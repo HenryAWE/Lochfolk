@@ -217,6 +217,8 @@ public:
 
     std::uint64_t file_size(path_view p) const;
 
+    bool remove(path_view p);
+
     ivfstream open(
         path_view p, std::ios_base::openmode mode = std::ios_base::binary
     );
