@@ -115,6 +115,11 @@ TEST(vfs, mount_sys_file)
 
         EXPECT_EQ(str, "1013\n");
     }
+
+    EXPECT_TRUE(vfs.remove("/text/example.txt"_pv));
+    EXPECT_FALSE(vfs.exists("/text/example.txt"_pv));
+    // Won't remove the actual system file
+    EXPECT_TRUE(std::filesystem::exists("test_vfs_data/example.txt"));
 }
 
 TEST(vfs, mount_sys_dir)
@@ -183,6 +188,12 @@ TEST(vfs, mount_zip_archive)
     }
 
     {
+        std::string str = vfs.read_string("/archive/info.txt"_pv);
+
+        EXPECT_EQ(str, "archive\n");
+    }
+
+    {
         auto vfss = vfs.open("/archive/data/value.txt"_pv);
 
         int v1 = 0, v2 = 0;
@@ -190,6 +201,12 @@ TEST(vfs, mount_zip_archive)
         EXPECT_EQ(v1, 182375);
         EXPECT_EQ(v2, 182376);
     }
+
+    EXPECT_TRUE(vfs.exists("/archive/info.txt"_pv));
+    EXPECT_TRUE(vfs.exists("/archive/data/value.txt"_pv));
+    EXPECT_TRUE(vfs.remove("/archive"_pv));
+    EXPECT_FALSE(vfs.exists("/archive/info.txt"_pv));
+    EXPECT_FALSE(vfs.exists("/archive/data/value.txt"_pv));
 }
 
 int main(int argc, char* argv[])
