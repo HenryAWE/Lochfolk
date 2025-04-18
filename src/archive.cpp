@@ -2,6 +2,7 @@
 #include <cassert>
 #include <span>
 #include <filesystem>
+#include <sstream>
 #include <minizip/mz.h>
 #include <minizip/mz_zip.h>
 #include <minizip/mz_strm_os.h>

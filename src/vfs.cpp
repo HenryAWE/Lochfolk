@@ -2,6 +2,7 @@
 #include <memory>
 #include <cassert>
 #include <fstream>
+#include <sstream>
 #include <lochfolk/utility.hpp>
 
 namespace lochfolk
@@ -106,28 +107,31 @@ std::unique_ptr<std::streambuf> virtual_file_system::file_node::string_constant:
                 return std::make_unique<std::stringbuf>(v, mode);
             }
         },
-        str
+        m_str_data
     );
 }
 
 std::string virtual_file_system::file_node::string_constant::read_string(bool convert_crlf) const
 {
     (void)convert_crlf;
-    return std::visit(
-        [](const auto& v)
-        { return std::string(v); },
-        str
-    );
+    return std::string(view());
 }
 
 std::uint64_t virtual_file_system::file_node::string_constant::file_size() const
 {
     return std::visit(
         [](const auto& v) -> std::uint64_t
-        {
-            return static_cast<std::uint64_t>(v.size());
-        },
-        str
+        { return static_cast<std::uint64_t>(v.size()); },
+        m_str_data
+    );
+}
+
+std::string_view virtual_file_system::file_node::string_constant::view() const noexcept
+{
+    return std::visit(
+        [](const auto& v) -> std::string_view
+        { return v; },
+        m_str_data
     );
 }
 
@@ -136,9 +140,9 @@ std::unique_ptr<std::filebuf> virtual_file_system::file_node::sys_file::open(
 ) const
 {
     std::unique_ptr fb = std::make_unique<std::filebuf>();
-    fb->open(sys_path, mode);
+    fb->open(m_sys_path, mode);
     if(!fb->is_open())
-        throw error(detail::stdfs_err_msg("failed to open ", sys_path));
+        throw error(detail::stdfs_err_msg("failed to open ", m_sys_path));
 
     return fb;
 }
@@ -149,9 +153,9 @@ std::string virtual_file_system::file_node::sys_file::read_string(bool convert_c
     if(!convert_crlf)
         mode |= std::ios_base::binary;
 
-    std::ifstream ifs(sys_path, mode);
+    std::ifstream ifs(m_sys_path, mode);
     if(!ifs.is_open()) [[unlikely]]
-        throw error(detail::stdfs_err_msg("failed to open ", sys_path));
+        throw error(detail::stdfs_err_msg("failed to open ", m_sys_path));
 
     std::stringstream ss;
     ss << ifs.rdbuf();
@@ -161,26 +165,43 @@ std::string virtual_file_system::file_node::sys_file::read_string(bool convert_c
 std::uint64_t virtual_file_system::file_node::sys_file::file_size() const
 {
     return static_cast<std::uint64_t>(
-        std::filesystem::file_size(sys_path)
+        std::filesystem::file_size(m_sys_path)
     );
+}
+
+virtual_file_system::file_node::archive_entry::archive_entry(archive& ar, std::int64_t off)
+    : m_archive_ref(ar.shared_from_this()), m_offset(off)
+{}
+
+virtual_file_system::file_node::archive_entry& virtual_file_system::file_node::archive_entry::operator=(
+    archive_entry&& rhs
+) noexcept
+{
+    if(this == &rhs) [[unlikely]]
+        return *this;
+
+    m_archive_ref = std::move(rhs.m_archive_ref);
+    m_offset = std::exchange(rhs.m_offset, 0);
+
+    return *this;
 }
 
 std::unique_ptr<std::streambuf> virtual_file_system::file_node::archive_entry::open(
     std::ios_base::openmode mode
 ) const
 {
-    return archive_ref->getbuf(offset, mode);
+    return m_archive_ref->getbuf(m_offset, mode);
 }
 
 std::string virtual_file_system::file_node::archive_entry::read_string(bool convert_crlf) const
 {
     (void)convert_crlf;
-    return archive_ref->read_string(offset);
+    return m_archive_ref->read_string(m_offset);
 }
 
 std::uint64_t virtual_file_system::file_node::archive_entry::file_size() const
 {
-    return archive_ref->get_file_size(offset);
+    return m_archive_ref->get_file_size(m_offset);
 }
 
 bool virtual_file_system::file_node::is_directory() const noexcept
@@ -346,7 +367,7 @@ void virtual_file_system::mount_zip_archive(
             base / filename,
             overwrite,
             std::in_place_type<file_node::archive_entry>,
-            ar,
+            *ar,
             entry.offset()
         );
     } while(ar->goto_next());
@@ -383,7 +404,7 @@ bool virtual_file_system::remove(path_view p)
         auto* root_dir = m_root.get_if<file_node::directory>();
         assert(root_dir);
 
-        root_dir->children.clear();
+        root_dir->children().clear();
         return true;
     }
 
@@ -392,11 +413,11 @@ bool virtual_file_system::remove(path_view p)
         return false;
 
     auto* parent_dir = parent->get_if<file_node::directory>();
-    auto it = parent_dir->children.find(p.filename());
-    if(it == parent_dir->children.end())
+    auto it = parent_dir->children().find(p.filename());
+    if(it == parent_dir->children().end())
         return false;
 
-    parent_dir->children.erase(it);
+    parent_dir->children().erase(it);
     return true;
 }
 
@@ -438,7 +459,7 @@ void virtual_file_system::list_files_impl(std::ostream& os, std::string_view nam
     {
         auto* dir = f.get_if<file_node::directory>();
         assert(dir != nullptr);
-        for(const auto& [sub_name, sub_f] : dir->children)
+        for(const auto& [sub_name, sub_f] : dir->children())
         {
             list_files_impl(os, sub_name, sub_f, indent + 1);
         }
@@ -459,8 +480,8 @@ const virtual_file_system::file_node* virtual_file_system::find_impl(path_view p
         if(!dir)
             return nullptr;
 
-        auto it = dir->children.find(std::string_view(subview));
-        if(it == dir->children.end())
+        auto it = dir->children().find(std::string_view(subview));
+        if(it == dir->children().end())
             return nullptr;
 
         current = &it->second;
@@ -478,8 +499,8 @@ const virtual_file_system::file_node* virtual_file_system::mkdir_impl(path_view 
         auto* dir = current->get_if<file_node::directory>();
         assert(dir);
 
-        auto it = dir->children.find(std::string_view(subview));
-        if(it != dir->children.end())
+        auto it = dir->children().find(std::string_view(subview));
+        if(it != dir->children().end())
         {
             if(!it->second.is_directory())
             {
@@ -488,7 +509,7 @@ const virtual_file_system::file_node* virtual_file_system::mkdir_impl(path_view 
         }
         else
         {
-            it = dir->children.emplace_hint(
+            it = dir->children().emplace_hint(
                 it,
                 std::string(subview),
                 file_node(current, std::in_place_type<file_node::directory>)
@@ -513,8 +534,8 @@ auto virtual_file_system::mount_impl(
 
     auto* dir = current->get_if<file_node::directory>();
     assert(dir);
-    auto it = dir->children.find(filename);
-    if(it != dir->children.end())
+    auto it = dir->children().find(filename);
+    if(it != dir->children().end())
     {
         if(overwrite)
         {
@@ -529,7 +550,7 @@ auto virtual_file_system::mount_impl(
     }
     else
     {
-        auto result = dir->children.emplace(
+        auto result = dir->children().emplace(
             filename,
             file_node(current, std::in_place_type<T>, std::forward<Args>(args)...)
         );

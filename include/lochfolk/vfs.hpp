@@ -64,58 +64,74 @@ public:
             return *this;
         }
 
-        struct directory
+        class directory
         {
+        public:
             directory() = default;
 
             directory(directory&&) noexcept = default;
 
             directory(container_type c) noexcept
-                : children(std::move(c)) {}
+                : m_children(std::move(c)) {}
 
             directory& operator=(directory&& rhs) noexcept = default;
-
-            container_type children;
 
             /**
              * @brief Always returns 0
              */
             std::uint64_t file_size() const noexcept;
+
+            container_type& children() noexcept
+            {
+                return m_children;
+            }
+
+            const container_type& children() const noexcept
+            {
+                return m_children;
+            }
+
+        private:
+            container_type m_children;
         };
 
-        struct string_constant
+        class string_constant
         {
+        public:
             using string_data = std::variant<
                 std::string,
                 std::string_view>;
 
-            string_data str;
-
             string_constant(string_constant&&) noexcept = default;
 
-            string_constant(std::string str_) noexcept
-                : str(std::in_place_index<0>, std::move(str_)) {}
+            string_constant(std::string str) noexcept
+                : m_str_data(std::in_place_index<0>, std::move(str)) {}
 
-            string_constant(std::string_view str_) noexcept
-                : str(std::in_place_index<1>, str_) {}
+            string_constant(std::string_view str) noexcept
+                : m_str_data(std::in_place_index<1>, str) {}
 
             string_constant& operator=(string_constant&& rhs) noexcept = default;
 
-            std::unique_ptr<std::streambuf> open(std::ios_base::openmode) const;
+            std::unique_ptr<std::streambuf> open(std::ios_base::openmode mode) const;
 
             std::string read_string(bool convert_crlf) const;
 
             std::uint64_t file_size() const;
+
+            [[nodiscard]]
+            std::string_view view() const noexcept;
+
+        private:
+            string_data m_str_data;
         };
 
-        struct sys_file
+        class sys_file
         {
-            std::filesystem::path sys_path;
-
+        public:
             sys_file(sys_file&&) noexcept = default;
 
             sys_file(std::filesystem::path sys_path)
-                : sys_path(std::move(sys_path))
+                : m_sys_path(std::move(sys_path))
             {}
 
             sys_file& operator=(sys_file&& rhs) noexcept = default;
@@ -125,34 +141,34 @@ public:
             std::string read_string(bool convert_crlf) const;
 
             std::uint64_t file_size() const;
+
+            const std::filesystem::path& system_path() const noexcept
+            {
+                return m_sys_path;
+            }
+
+        private:
+            std::filesystem::path m_sys_path;
         };
 
         struct archive_entry
         {
-            std::shared_ptr<archive> archive_ref;
-            std::int64_t offset;
-
+        public:
             archive_entry(archive_entry&&) noexcept = default;
 
-            archive_entry(std::shared_ptr<archive> ar, std::int64_t off)
-                : archive_ref(std::move(ar)), offset(off) {}
+            archive_entry(archive& ar, std::int64_t off);
 
-            archive_entry& operator=(archive_entry&& rhs) noexcept
-            {
-                if(this == &rhs) [[unlikely]]
-                    return *this;
-
-                archive_ref = std::move(rhs.archive_ref);
-                offset = std::exchange(rhs.offset, 0);
-
-                return *this;
-            }
+            archive_entry& operator=(archive_entry&& rhs) noexcept;
 
             std::unique_ptr<std::streambuf> open(std::ios_base::openmode mode) const;
 
             std::string read_string(bool convert_crlf) const;
 
             std::uint64_t file_size() const;
+
+        private:
+            std::shared_ptr<archive> m_archive_ref;
+            std::int64_t m_offset;
         };
 
         using data_type = std::variant<
@@ -173,13 +189,14 @@ public:
             return std::get_if<T>(&m_data);
         }
 
+        [[nodiscard]]
         bool is_directory() const noexcept;
 
         std::uint64_t file_size() const;
 
         std::unique_ptr<std::streambuf> getbuf(std::ios_base::openmode mode) const;
 
-        std::string read_string(bool convert_crlf) const;
+        std::string read_string(bool convert_crlf = true) const;
 
     private:
         const file_node* m_parent;
