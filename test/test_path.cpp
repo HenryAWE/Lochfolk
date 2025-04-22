@@ -206,6 +206,22 @@ TEST(path, lexically_normal)
             "."_pv
         );
     }
+
+    {
+        lochfolk::path p("/a/../b/");
+        EXPECT_EQ(
+            p.lexically_normal(),
+            "/b/"_pv
+        );
+    }
+
+    {
+        lochfolk::path p("../a/");
+        EXPECT_EQ(
+            p.lexically_normal(),
+            "../a/"_pv
+        );
+    }
 }
 
 int main(int argc, char* argv[])

@@ -1,5 +1,6 @@
 #include <lochfolk/path.hpp>
 #include <algorithm>
+#include <iterator>
 
 namespace lochfolk
 {
@@ -13,7 +14,7 @@ path path::lexically_normal() const
     const auto sentinel = m_str.end();
     for(auto it = m_str.begin(); it != sentinel;)
     {
-        const char ch = *it;
+        char ch = *it;
 
         if(ch == separator)
         {
@@ -36,13 +37,26 @@ path path::lexically_normal() const
 
             char next_ch = *it;
 
-            if(next_ch == '.') // "..", parent path
+            if(next_ch == '.')
             {
+                if(auto peek_it = std::next(it); peek_it != sentinel && *peek_it != separator)
+                {
+                    result += '.';
+                    it = peek_it;
+                    goto ordinary; // Ordinary path starts with "..", e.g. "..file"
+                }
+
+                // "..", parent path
+
                 if(result == "/") // result is root path
+                {
+                    ++it;
                     continue;
-                if(result.empty())
+                }
+                else if(result.empty())
                 {
                     result = "..";
+                    ++it;
                     continue;
                 }
 
@@ -63,8 +77,13 @@ path path::lexically_normal() const
             continue;
         }
 
+ordinary:
         result += ch;
         ++it;
+
+        auto stop = std::find(it, sentinel, separator);
+        std::copy(it, stop, std::back_inserter(result));
+        it = stop;
     }
 
     if(result.empty())

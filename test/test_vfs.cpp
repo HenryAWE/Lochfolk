@@ -209,6 +209,21 @@ TEST(vfs, mount_zip_archive)
     EXPECT_FALSE(vfs.exists("/archive/data/value.txt"_pv));
 }
 
+TEST(vfs, access_context)
+{
+    using namespace lochfolk::vfs_literals;
+
+    lochfolk::virtual_file_system vfs;
+    vfs.mount_string_constant("/data/strings/str.txt"_pv, "str");
+    vfs.mount_string_constant("/info/info.txt"_pv, "info");
+
+    lochfolk::access_context ctx(vfs);
+    ctx.current_path("/data"_pv);
+
+    EXPECT_EQ(ctx.to_fullpath("strings"_pv), "/data/strings"_pv);
+    EXPECT_EQ(ctx.to_fullpath("../info/info.txt"_pv), "/info/info.txt"_pv);
+}
+
 int main(int argc, char* argv[])
 {
     testing::InitGoogleTest(&argc, argv);

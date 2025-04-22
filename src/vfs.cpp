@@ -565,6 +565,9 @@ auto virtual_file_system::mount_impl(
 
 access_context::access_context(const access_context&) = default;
 
+access_context::access_context(virtual_file_system& vfs)
+    : m_vfs(&vfs), m_current("/") {}
+
 void access_context::current_path(path_view pv)
 {
     m_current = pv;
