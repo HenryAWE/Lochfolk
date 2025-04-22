@@ -44,9 +44,9 @@ public:
 
     path_view& operator=(const path_view&) noexcept = default;
 
-    bool operator==(const path_view&) const = default;
+    constexpr bool operator==(const path_view& rhs) const noexcept = default;
 
-    operator std::string_view() const noexcept
+    constexpr operator std::string_view() const noexcept
     {
         return m_str;
     }
@@ -108,6 +108,23 @@ public:
         return path_view(m_str.substr(pos));
     }
 
+    [[nodiscard]]
+    constexpr path_view extension() const noexcept
+    {
+        auto result = filename();
+
+        if(result.empty())
+            return path_view();
+
+        auto pos = result.m_str.rfind('.');
+        if(pos == result.m_str.npos || pos == 0)
+            return path_view();
+
+        result.m_str = result.m_str.substr(pos);
+
+        return result;
+    }
+
 private:
     std::string_view m_str;
 };
@@ -140,6 +157,21 @@ public:
 
     constexpr path& operator=(const path&) = default;
     constexpr path& operator=(path&&) = default;
+
+    friend constexpr bool operator==(const path& lhs, const path& rhs) noexcept
+    {
+        return path_view(lhs) == path_view(rhs);
+    }
+
+    friend constexpr bool operator==(const path& lhs, const path_view& rhs) noexcept
+    {
+        return path_view(lhs) == rhs;
+    }
+
+    friend constexpr bool operator==(const path_view& lhs, const path& rhs) noexcept
+    {
+        return lhs == path_view(rhs);
+    }
 
     constexpr const char* c_str() const
     {
@@ -179,6 +211,11 @@ public:
     constexpr path filename() const
     {
         return path_view(*this).filename();
+    }
+
+    constexpr path extension() const
+    {
+        return path_view(*this).extension();
     }
 
     constexpr auto split_view() const
@@ -269,6 +306,9 @@ public:
     {
         return concat(std::move(sv));
     }
+
+    [[nodiscard]]
+    path lexically_normal() const;
 
 private:
     std::string m_str;

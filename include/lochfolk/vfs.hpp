@@ -274,6 +274,39 @@ private:
     auto mount_impl(path_view p, bool overwrite, std::in_place_type_t<T>, Args&&... args)
         -> std::pair<const file_node*, bool>;
 };
+
+class access_context
+{
+public:
+    access_context() = delete;
+
+    access_context(access_context&& other) noexcept
+        : m_vfs(other.m_vfs), m_current(std::move(other.m_current)) {}
+
+    access_context(const access_context&);
+
+    access_context(virtual_file_system& vfs);
+
+    [[nodiscard]]
+    const path& current_path() const noexcept
+    {
+        return m_current;
+    }
+
+    void current_path(path_view pv);
+
+    path to_fullpath(path_view pv) const;
+
+    [[nodiscard]]
+    virtual_file_system& get_vfs() const noexcept
+    {
+        return *m_vfs;
+    }
+
+private:
+    virtual_file_system* m_vfs;
+    path m_current;
+};
 } // namespace lochfolk
 
 #endif

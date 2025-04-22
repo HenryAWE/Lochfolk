@@ -133,6 +133,17 @@ TEST(path, filename)
     EXPECT_EQ(lochfolk::path("/").filename(), ""_pv);
 }
 
+TEST(path, extension)
+{
+    using namespace lochfolk::vfs_literals;
+
+    EXPECT_EQ("/foo/bar.txt"_pv.extension(), ".txt"_pv);
+    EXPECT_EQ("/foo/bar."_pv.extension(), "."_pv);
+    EXPECT_EQ("/foo/bar"_pv.extension(), ""_pv);
+    EXPECT_EQ("/foo/..bar"_pv.extension(), ".bar"_pv);
+    EXPECT_EQ("/foo/.hidden"_pv.extension(), ""_pv);
+}
+
 TEST(path, split_view)
 {
     using namespace lochfolk::vfs_literals;
@@ -157,6 +168,43 @@ TEST(path, split_view)
         EXPECT_EQ(strs[0], "data");
         EXPECT_EQ(strs[1], "text");
         EXPECT_EQ(strs[2], "example.txt");
+    }
+}
+
+TEST(path, lexically_normal)
+{
+    using namespace lochfolk::vfs_literals;
+
+    {
+        lochfolk::path p("a/./b/..");
+        EXPECT_EQ(
+            p.lexically_normal(),
+            "a/"_pv
+        );
+    }
+
+    {
+        lochfolk::path p("a/./b/../");
+        EXPECT_EQ(
+            p.lexically_normal(),
+            "a/"_pv
+        );
+    }
+
+    {
+        lochfolk::path p("/usr//////lib");
+        EXPECT_EQ(
+            p.lexically_normal(),
+            "/usr/lib"_pv
+        );
+    }
+
+    {
+        lochfolk::path p("a/..");
+        EXPECT_EQ(
+            p.lexically_normal(),
+            "."_pv
+        );
     }
 }
 

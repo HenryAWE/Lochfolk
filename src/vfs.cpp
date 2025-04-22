@@ -562,4 +562,18 @@ auto virtual_file_system::mount_impl(
         );
     }
 }
+
+access_context::access_context(const access_context&) = default;
+
+void access_context::current_path(path_view pv)
+{
+    m_current = pv;
+}
+
+path access_context::to_fullpath(path_view pv) const
+{
+    path result = m_current / pv;
+
+    return result.lexically_normal();
+}
 } // namespace lochfolk
