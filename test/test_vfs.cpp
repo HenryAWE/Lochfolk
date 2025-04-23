@@ -215,13 +215,35 @@ TEST(vfs, access_context)
 
     lochfolk::virtual_file_system vfs;
     vfs.mount_string_constant("/data/strings/str.txt"_pv, "str");
-    vfs.mount_string_constant("/info/info.txt"_pv, "info");
+    vfs.mount_string_constant("/info/info.txt"_pv, "1013");
 
     lochfolk::access_context ctx(vfs);
     ctx.current_path("/data"_pv);
 
+    EXPECT_EQ(&ctx.get_vfs(), &vfs);
+
     EXPECT_EQ(ctx.to_fullpath("strings"_pv), "/data/strings"_pv);
     EXPECT_EQ(ctx.to_fullpath("../info/info.txt"_pv), "/info/info.txt"_pv);
+
+    EXPECT_TRUE(ctx.is_directory("strings"_pv));
+
+    EXPECT_TRUE(ctx.exists("../info/info.txt"_pv));
+    EXPECT_EQ(ctx.file_size("../info/info.txt"_pv), 4);
+    EXPECT_FALSE(ctx.exists("../info/str.txt"_pv));
+
+    {
+        auto vfss = ctx.open("../info/info.txt"_pv);
+        int v = 0;
+        vfss >> v;
+
+        EXPECT_EQ(v, 1013);
+    }
+
+    {
+        std::string str = ctx.read_string("../info/info.txt"_pv);
+
+        EXPECT_EQ(str, "1013");
+    }
 }
 
 int main(int argc, char* argv[])

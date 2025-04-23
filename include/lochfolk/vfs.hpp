@@ -303,6 +303,35 @@ public:
         return *m_vfs;
     }
 
+    bool exists(path_view p) const
+    {
+        return m_vfs->exists(to_fullpath(p));
+    }
+
+    bool is_directory(path_view p) const
+    {
+        return m_vfs->is_directory(to_fullpath(p));
+    }
+
+    std::uint64_t file_size(path_view p) const
+    {
+        return m_vfs->file_size(to_fullpath(p));
+    }
+
+    ivfstream open(
+        path_view p, std::ios_base::openmode mode = std::ios_base::binary
+    ) const
+    {
+        return m_vfs->open(to_fullpath(p), mode);
+    }
+
+    std::string read_string(
+        path_view p, bool convert_crlf = true
+    )
+    {
+        return m_vfs->read_string(to_fullpath(p), convert_crlf);
+    }
+
 private:
     virtual_file_system* m_vfs;
     path m_current;
