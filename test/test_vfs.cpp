@@ -244,6 +244,10 @@ TEST(vfs, access_context)
 
         EXPECT_EQ(str, "1013");
     }
+
+    EXPECT_TRUE(ctx.remove("../info/info.txt"_pv));
+    EXPECT_FALSE(ctx.exists("../info/info.txt"_pv));
+    EXPECT_FALSE(ctx.remove("../info/info.txt"_pv));
 }
 
 int main(int argc, char* argv[])

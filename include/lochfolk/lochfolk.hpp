@@ -3,10 +3,11 @@
 
 #pragma once
 
+#include <tuple>
+
 // IWYU pragma: begin_exports
 
-#include <tuple>
-#include "config.hpp"
+#include "stream.hpp"
 #include "archive.hpp"
 #include "path.hpp"
 #include "vfs.hpp"

@@ -236,10 +236,13 @@ public:
         path_view p, const std::filesystem::path& sys_path, bool overwrite = true
     );
 
+    [[nodiscard]]
     bool exists(path_view p) const;
 
+    [[nodiscard]]
     bool is_directory(path_view p) const;
 
+    [[nodiscard]]
     std::uint64_t file_size(path_view p) const;
 
     bool remove(path_view p);
@@ -254,6 +257,7 @@ public:
      * @param p Path
      * @param convert_crlf Convert CRLF to LF for system files on Windows
      */
+    [[nodiscard]]
     std::string read_string(path_view p, bool convert_crlf = true);
 
     /**
@@ -303,19 +307,27 @@ public:
         return *m_vfs;
     }
 
+    [[nodiscard]]
     bool exists(path_view p) const
     {
         return m_vfs->exists(to_fullpath(p));
     }
 
+    [[nodiscard]]
     bool is_directory(path_view p) const
     {
         return m_vfs->is_directory(to_fullpath(p));
     }
 
+    [[nodiscard]]
     std::uint64_t file_size(path_view p) const
     {
         return m_vfs->file_size(to_fullpath(p));
+    }
+
+    bool remove(path_view p) const
+    {
+        return m_vfs->remove(to_fullpath(p));
     }
 
     ivfstream open(
@@ -325,6 +337,7 @@ public:
         return m_vfs->open(to_fullpath(p), mode);
     }
 
+    [[nodiscard]]
     std::string read_string(
         path_view p, bool convert_crlf = true
     )
