@@ -175,53 +175,23 @@ TEST(path, lexically_normal)
 {
     using namespace lochfolk::vfs_literals;
 
+    auto check_lex_normal = [](const lochfolk::path& p, lochfolk::path_view expected)
     {
-        lochfolk::path p("a/./b/..");
         EXPECT_EQ(
             p.lexically_normal(),
-            "a/"_pv
-        );
-    }
+            expected
+        ) << "p = " << std::string_view(p);
+    };
 
-    {
-        lochfolk::path p("a/./b/../");
-        EXPECT_EQ(
-            p.lexically_normal(),
-            "a/"_pv
-        );
-    }
-
-    {
-        lochfolk::path p("/usr//////lib");
-        EXPECT_EQ(
-            p.lexically_normal(),
-            "/usr/lib"_pv
-        );
-    }
-
-    {
-        lochfolk::path p("a/..");
-        EXPECT_EQ(
-            p.lexically_normal(),
-            "."_pv
-        );
-    }
-
-    {
-        lochfolk::path p("/a/../b/");
-        EXPECT_EQ(
-            p.lexically_normal(),
-            "/b/"_pv
-        );
-    }
-
-    {
-        lochfolk::path p("../a/");
-        EXPECT_EQ(
-            p.lexically_normal(),
-            "../a/"_pv
-        );
-    }
+    check_lex_normal("",""_pv);
+    check_lex_normal("./a","a"_pv);
+    check_lex_normal("a/./b/..", "a/"_pv);
+    check_lex_normal("a/./b/../", "a/"_pv);
+    check_lex_normal("/usr//////lib", "/usr/lib"_pv);
+    check_lex_normal("a/..", "."_pv);
+    check_lex_normal("/a/../b/", "/b/"_pv);
+    check_lex_normal("../a", "../a"_pv);
+    check_lex_normal("../a/", "../a/"_pv);
 }
 
 int main(int argc, char* argv[])

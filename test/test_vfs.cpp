@@ -226,6 +226,7 @@ TEST(vfs, access_context)
     EXPECT_EQ(ctx.to_fullpath("../info/info.txt"_pv), "/info/info.txt"_pv);
 
     EXPECT_TRUE(ctx.is_directory("strings"_pv));
+    EXPECT_FALSE(ctx.is_directory("strings/str.txt"_pv));
 
     EXPECT_TRUE(ctx.exists("../info/info.txt"_pv));
     EXPECT_EQ(ctx.file_size("../info/info.txt"_pv), 4);
