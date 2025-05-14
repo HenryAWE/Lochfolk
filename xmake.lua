@@ -8,6 +8,7 @@ target("lochfolk")
     set_warnings("all", "error")
     set_kind("static")
     add_includedirs("include", { public = true })
+    add_headerfiles("include/(**.hpp)", { prefix = "include" })
     add_packages("minizip-ng")
     add_files("src/*.cpp")
 

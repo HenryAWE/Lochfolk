@@ -8,7 +8,7 @@
 
 namespace lochfolk
 {
-class ivfstream : public std::istream
+class ivfstream final : public std::istream
 {
     using my_base = std::istream;
 
