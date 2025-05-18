@@ -180,18 +180,31 @@ TEST(path, lexically_normal)
         EXPECT_EQ(
             p.lexically_normal(),
             expected
-        ) << "p = " << std::string_view(p);
+        ) << "p = "
+          << std::string_view(p);
     };
 
-    check_lex_normal("",""_pv);
-    check_lex_normal("./a","a"_pv);
+    check_lex_normal("", ""_pv);
+    check_lex_normal(".hidden", ".hidden"_pv);
+    check_lex_normal(".hidden/a", ".hidden/a"_pv);
+
+    check_lex_normal("./a", "a"_pv);
     check_lex_normal("a/./b/..", "a/"_pv);
     check_lex_normal("a/./b/../", "a/"_pv);
     check_lex_normal("/usr//////lib", "/usr/lib"_pv);
+
     check_lex_normal("a/..", "."_pv);
     check_lex_normal("/a/../b/", "/b/"_pv);
     check_lex_normal("../a", "../a"_pv);
     check_lex_normal("../a/", "../a/"_pv);
+    check_lex_normal("../a////", "../a/"_pv);
+
+    check_lex_normal("../.a", "../.a"_pv);
+    check_lex_normal("../..a", "../..a"_pv);
+    check_lex_normal("../...a", "../...a"_pv);
+    check_lex_normal("../..a/", "../..a/"_pv);
+    check_lex_normal("../...a/", "../...a/"_pv);
+    check_lex_normal("../..a////", "../..a/"_pv);
 }
 
 int main(int argc, char* argv[])

@@ -42,7 +42,6 @@ path path::lexically_normal() const
                 if(auto peek_it = std::next(it); peek_it != sentinel && *peek_it != separator)
                 {
                     result += '.';
-                    it = peek_it;
                     goto ordinary; // Ordinary path starts with "..", e.g. "..file"
                 }
 
@@ -73,6 +72,12 @@ path path::lexically_normal() const
 
             if(next_ch == '/') // "./", current path
                 ++it;
+            else // filename starts with ".", e.g. ".hidden"
+            {
+                result += '.';
+                ch = next_ch; // the following code will copy this character
+                goto ordinary;
+            }
 
             continue;
         }
