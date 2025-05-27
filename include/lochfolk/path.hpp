@@ -173,11 +173,13 @@ public:
         return lhs == path_view(rhs);
     }
 
+    [[nodiscard]]
     constexpr const char* c_str() const
     {
         return m_str.c_str();
     }
 
+    [[nodiscard]]
     constexpr const std::string& string() const
     {
         return m_str;
@@ -193,26 +195,31 @@ public:
         return path_view(m_str);
     }
 
+    [[nodiscard]]
     constexpr bool empty() const
     {
         return m_str.empty();
     }
 
+    [[nodiscard]]
     constexpr bool is_absolute() const
     {
         return path_view(*this).is_absolute();
     }
 
+    [[nodiscard]]
     constexpr path parent_path() const
     {
         return path_view(*this).parent_path();
     }
 
+    [[nodiscard]]
     constexpr path filename() const
     {
         return path_view(*this).filename();
     }
 
+    [[nodiscard]]
     constexpr path extension() const
     {
         return path_view(*this).extension();

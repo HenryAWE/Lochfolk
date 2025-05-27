@@ -330,6 +330,7 @@ public:
         return m_vfs->remove(to_fullpath(p));
     }
 
+    [[nodiscard]]
     ivfstream open(
         path_view p, std::ios_base::openmode mode = std::ios_base::binary
     ) const
