@@ -218,10 +218,18 @@ TEST(vfs, access_context)
     vfs.mount_string_constant("/info/info.txt"_pv, "1013");
 
     lochfolk::access_context ctx(vfs);
+    EXPECT_EQ(&ctx.get_vfs(), &vfs);
+
+    EXPECT_EQ(ctx.current_path(), "/"_pv);
+
     ctx.current_path("/data"_pv);
     EXPECT_EQ(ctx.current_path(), "/data"_pv);
 
-    EXPECT_EQ(&ctx.get_vfs(), &vfs);
+    {
+        std::string str = ctx.read_string("strings/str.txt"_pv);
+
+        EXPECT_EQ(str, "str");
+    }
 
     EXPECT_EQ(ctx.to_fullpath("strings"_pv), "/data/strings"_pv);
     EXPECT_EQ(ctx.to_fullpath("../info/info.txt"_pv), "/info/info.txt"_pv);
@@ -255,8 +263,90 @@ TEST(vfs, access_context)
     EXPECT_EQ(ctx.current_path(), "/data/strings"_pv);
     EXPECT_TRUE(ctx.exists("str.txt"_pv));
 
+    {
+        std::string str = ctx.read_string("str.txt"_pv);
+
+        EXPECT_EQ(str, "str");
+    }
+
     ctx.current_path(".."_pv);
     EXPECT_EQ(ctx.current_path(), "/data/"_pv);
+
+    {
+        std::string str = ctx.read_string("strings/str.txt"_pv);
+
+        EXPECT_EQ(str, "str");
+    }
+}
+
+TEST(vfs, access_context_archive)
+{
+    using namespace lochfolk::vfs_literals;
+
+    lochfolk::virtual_file_system vfs;
+    vfs.mount_zip_archive("/archive"_pv, "test_vfs_data/ar.zip");
+    vfs.list_files(std::cerr);
+
+    lochfolk::access_context ctx(vfs);
+    ctx.current_path("archive"_pv);
+    EXPECT_EQ(ctx.current_path(), "/archive"_pv);
+
+    {
+        auto vfss = ctx.open("/archive/info.txt"_pv);
+
+        std::string str;
+        vfss >> str;
+
+        EXPECT_EQ(str, "archive");
+    }
+    {
+        auto vfss = ctx.open("info.txt"_pv);
+
+        std::string str;
+        vfss >> str;
+
+        EXPECT_EQ(str, "archive");
+    }
+
+    {
+        std::string str = ctx.read_string("info.txt"_pv);
+
+        EXPECT_EQ(str, "archive\n");
+    }
+    {
+        std::string str = ctx.read_string("/archive/info.txt"_pv);
+
+        EXPECT_EQ(str, "archive\n");
+    }
+
+    {
+        auto vfss = ctx.open("/archive/data/value.txt"_pv);
+
+        int v1 = 0, v2 = 0;
+        vfss >> v1 >> v2;
+        EXPECT_EQ(v1, 182375);
+        EXPECT_EQ(v2, 182376);
+    }
+    {
+        auto vfss = ctx.open("data/value.txt"_pv);
+
+        int v1 = 0, v2 = 0;
+        vfss >> v1 >> v2;
+        EXPECT_EQ(v1, 182375);
+        EXPECT_EQ(v2, 182376);
+    }
+
+    EXPECT_TRUE(ctx.exists("/archive/info.txt"_pv));
+    EXPECT_TRUE(ctx.exists("info.txt"_pv));
+    EXPECT_TRUE(ctx.exists("/archive/data/value.txt"_pv));
+    EXPECT_TRUE(ctx.exists("data/value.txt"_pv));
+
+    // TODO: remove("data/"_pv) cannot produce the expected result.
+    // Should I allow this in the future, or just mark it as wrong usage in the document?
+    EXPECT_TRUE(ctx.remove("data"_pv));
+    EXPECT_TRUE(ctx.exists("info.txt"_pv));
+    EXPECT_FALSE(ctx.exists("/archive/data/value.txt"_pv));
+    EXPECT_FALSE(ctx.exists("data/value.txt"_pv));
 }
 
 int main(int argc, char* argv[])
