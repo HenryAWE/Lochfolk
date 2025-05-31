@@ -70,7 +70,34 @@ public:
     [[nodiscard]]
     constexpr bool is_absolute() const noexcept
     {
-        return !m_str.empty() && m_str.front() == separator;
+        if(m_str.empty())
+            return false;
+
+        // Check if starts with separator
+        if(m_str[0] != separator)
+            return false;
+
+        // Check for . or .. components
+        std::size_t start = 0;
+        std::size_t end = m_str.find(separator);
+
+        while(end != std::string_view::npos)
+        {
+            std::string_view component = m_str.substr(start, end - start);
+
+            if(component == "." || component == "..")
+                return false;
+
+            start = end + 1;
+            end = m_str.find(separator, start);
+        }
+
+        // Check the last component after the last separator
+        std::string_view last_component = std::string_view(m_str).substr(start);
+        if(last_component == "." || last_component == "..")
+            return false;
+
+        return true;
     }
 
     [[nodiscard]]

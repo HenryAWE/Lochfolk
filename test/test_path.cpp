@@ -10,23 +10,60 @@ TEST(path, constructor)
 
     {
         lochfolk::path p = "/data/a.txt";
-
-        EXPECT_TRUE(p.is_absolute());
         EXPECT_EQ(p.string(), "/data/a.txt");
     }
 
     {
         lochfolk::path p = "audio/a.wav";
-
-        EXPECT_FALSE(p.is_absolute());
         EXPECT_EQ(p.string(), "audio/a.wav");
     }
 
     {
         lochfolk::path p = "data";
-
-        EXPECT_FALSE(p.is_absolute());
         EXPECT_EQ(p.string(), "data");
+    }
+}
+
+TEST(path, is_absolute)
+{
+    {
+        lochfolk::path p;
+        EXPECT_FALSE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "/data/a.txt";
+        EXPECT_TRUE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "audio/a.wav";
+        EXPECT_FALSE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "data";
+        EXPECT_FALSE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "/data/.";
+        EXPECT_FALSE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "/data/.hidden";
+        EXPECT_TRUE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "/data/..";
+        EXPECT_FALSE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "/data/..a.txt";
+        EXPECT_TRUE(p.is_absolute());
     }
 }
 
