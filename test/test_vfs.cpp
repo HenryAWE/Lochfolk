@@ -219,6 +219,7 @@ TEST(vfs, access_context)
 
     lochfolk::access_context ctx(vfs);
     ctx.current_path("/data"_pv);
+    EXPECT_EQ(ctx.current_path(), "/data"_pv);
 
     EXPECT_EQ(&ctx.get_vfs(), &vfs);
 
@@ -249,6 +250,13 @@ TEST(vfs, access_context)
     EXPECT_TRUE(ctx.remove("../info/info.txt"_pv));
     EXPECT_FALSE(ctx.exists("../info/info.txt"_pv));
     EXPECT_FALSE(ctx.remove("../info/info.txt"_pv));
+
+    ctx.current_path("strings"_pv);
+    EXPECT_EQ(ctx.current_path(), "/data/strings"_pv);
+    EXPECT_TRUE(ctx.exists("str.txt"_pv));
+
+    ctx.current_path(".."_pv);
+    EXPECT_EQ(ctx.current_path(), "/data/"_pv);
 }
 
 int main(int argc, char* argv[])

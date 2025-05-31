@@ -570,7 +570,8 @@ access_context::access_context(virtual_file_system& vfs)
 
 void access_context::current_path(path_view pv)
 {
-    m_current = pv;
+    m_current /= pv;
+    m_current = m_current.lexically_normal();
 }
 
 path access_context::to_fullpath(path_view pv) const
