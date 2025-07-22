@@ -412,8 +412,20 @@ bool virtual_file_system::remove(path_view p)
     if(!parent->is_directory())
         return false;
 
+    std::string_view target_sv = [](path_view pv)
+    {
+        std::string_view result(pv);
+        if(result.back() == path_view::separator)
+            result.remove_suffix(1);
+
+        std::size_t pos = result.rfind(path_view::separator);
+        if(pos == std::string_view::npos)
+            pos = 0;
+        return result.substr(pos + 1);
+    }(p);
+
     auto* parent_dir = parent->get_if<file_node::directory>();
-    auto it = parent_dir->children().find(p.filename());
+    auto it = parent_dir->children().find(path_view(target_sv));
     if(it == parent_dir->children().end())
         return false;
 

@@ -277,6 +277,10 @@ TEST(vfs, access_context)
 
         EXPECT_EQ(str, "str");
     }
+
+    EXPECT_TRUE(ctx.exists("/data/strings/str.txt"_pv));
+    EXPECT_TRUE(ctx.remove("/data"_pv));
+    EXPECT_FALSE(ctx.exists("/data/strings/str.txt"_pv));
 }
 
 TEST(vfs, access_context_archive)
@@ -341,9 +345,7 @@ TEST(vfs, access_context_archive)
     EXPECT_TRUE(ctx.exists("/archive/data/value.txt"_pv));
     EXPECT_TRUE(ctx.exists("data/value.txt"_pv));
 
-    // TODO: remove("data/"_pv) cannot produce the expected result.
-    // Should I allow this in the future, or just mark it as wrong usage in the document?
-    EXPECT_TRUE(ctx.remove("data"_pv));
+    EXPECT_TRUE(ctx.remove("data/"_pv));
     EXPECT_TRUE(ctx.exists("info.txt"_pv));
     EXPECT_FALSE(ctx.exists("/archive/data/value.txt"_pv));
     EXPECT_FALSE(ctx.exists("data/value.txt"_pv));
