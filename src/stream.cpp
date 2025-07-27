@@ -2,15 +2,20 @@
 
 namespace lochfolk
 {
+ivfstream::ivfstream() = default;
+
 ivfstream::ivfstream(ivfstream&& other) noexcept
-    : my_base(other.rdbuf(nullptr)) {}
+    : my_base(other.rdbuf(nullptr)),
+      m_buf(std::move(other.m_buf)) {}
 
 ivfstream::ivfstream(std::unique_ptr<std::streambuf> buf)
-    : my_base(buf.release()) {}
+    : my_base(buf.get()),
+      m_buf(std::move(buf)) {}
 
-ivfstream::~ivfstream()
+ivfstream::~ivfstream() = default;
+
+bool ivfstream::has_buffer() const noexcept
 {
-    std::streambuf* buf = rdbuf(nullptr);
-    delete buf;
+    return static_cast<bool>(m_buf);
 }
 } // namespace lochfolk

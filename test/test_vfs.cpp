@@ -51,7 +51,9 @@ TEST(vfs, mount_string_constant)
     // Test move constructor
     {
         auto src = vfs.open("/data/text/example.txt"_pv);
+        EXPECT_TRUE(src.has_buffer());
         auto vfss = std::move(src);
+        EXPECT_FALSE(src.has_buffer());
         EXPECT_EQ(src.rdbuf(), nullptr);
 
         int v = 0;
