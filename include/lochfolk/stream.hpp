@@ -13,7 +13,7 @@ class ivfstream final : public std::istream
     using my_base = std::istream;
 
 public:
-    ivfstream();
+    ivfstream() = delete;
 
     ivfstream(ivfstream&& other) noexcept;
 

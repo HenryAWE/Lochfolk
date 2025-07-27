@@ -2,8 +2,6 @@
 
 namespace lochfolk
 {
-ivfstream::ivfstream() = default;
-
 ivfstream::ivfstream(ivfstream&& other) noexcept
     : my_base(other.rdbuf(nullptr)),
       m_buf(std::move(other.m_buf)) {}
