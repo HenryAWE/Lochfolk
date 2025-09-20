@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <iostream>
+#include "detail/config.hpp"
 
 namespace lochfolk
 {
@@ -15,16 +16,17 @@ class ivfstream final : public std::istream
 public:
     ivfstream() = delete;
 
-    ivfstream(ivfstream&& other) noexcept;
+    LOCHFOLK_API ivfstream(ivfstream&& other) noexcept;
 
-    ivfstream(std::unique_ptr<std::streambuf> buf);
+    LOCHFOLK_API ivfstream(std::unique_ptr<std::streambuf> buf);
 
-    ~ivfstream();
+    LOCHFOLK_API ~ivfstream();
 
     /**
      * @brief Returns true if the underlying buffer is available
      */
-    bool has_buffer() const noexcept;
+    [[nodiscard]]
+    LOCHFOLK_API bool has_buffer() const noexcept;
 
 private:
     std::unique_ptr<std::streambuf> m_buf;

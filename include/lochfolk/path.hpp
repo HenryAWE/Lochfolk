@@ -6,6 +6,7 @@
 #include <concepts>
 #include <string>
 #include <ranges>
+#include "detail/config.hpp"
 
 namespace lochfolk
 {
@@ -342,7 +343,7 @@ public:
     }
 
     [[nodiscard]]
-    path lexically_normal() const;
+    LOCHFOLK_API path lexically_normal() const;
 
 private:
     std::string m_str;

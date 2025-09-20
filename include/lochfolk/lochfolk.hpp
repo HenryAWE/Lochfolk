@@ -7,6 +7,7 @@
 
 // IWYU pragma: begin_exports
 
+#include "detail/config.hpp"
 #include "stream.hpp"
 #include "archive.hpp"
 #include "path.hpp"
@@ -20,6 +21,7 @@
 
 namespace lochfolk
 {
+LOCHFOLK_API
 std::tuple<int, int, int> get_version() noexcept;
 } // namespace lochfolk
 

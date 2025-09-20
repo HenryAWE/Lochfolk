@@ -7,6 +7,10 @@ jobs:
         runs-on: windows-2022
 
         name: Windows MSVC
+        strategy:
+          matrix:
+            kind: [static, shared]
+          fail-fast: false
 
         steps:
           - uses: actions/checkout@v4
@@ -25,7 +29,7 @@ jobs:
 
           - name: Configure
             run: |
-              xmake config --yes -m release --unit_test=y --toolchain=msvc
+              xmake config --yes -m release --unit_test=y --toolchain=msvc -k ${{ matrix.kind }}
 
           - name: Build
             run: |
@@ -38,6 +42,10 @@ jobs:
         runs-on: ubuntu-24.04
 
         name: Linux Clang 18
+        strategy:
+          matrix:
+            kind: [static, shared]
+          fail-fast: false
 
         steps:
           - name: Install Dependencies
@@ -59,7 +67,7 @@ jobs:
           # Enable ASan
           - name: Configure
             run: |
-              xmake config --yes --policies=build.sanitizer.address -m release --unit_test=y --toolchain=clang-18
+              xmake config --yes --policies=build.sanitizer.address -m release --unit_test=y --toolchain=clang-18 -k ${{ matrix.kind }}
 
           - name: Build
             run: |

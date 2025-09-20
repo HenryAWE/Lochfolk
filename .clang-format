@@ -11,6 +11,8 @@ ReferenceAlignment: Left
 QualifierAlignment: Leave
 RequiresClausePosition: WithPreceding
 
+AttributeMacros: [LOCHFOLK_API]
+
 BreakBeforeBraces: Custom
 BraceWrapping:
   AfterCaseLabel: true
@@ -64,7 +66,7 @@ BreakBeforeTernaryOperators: false
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: AfterColon
 BreakStringLiterals: false
-BreakAfterAttributes: Leave
+BreakAfterAttributes: Always
 CompactNamespaces: false
 Cpp11BracedListStyle: true
 EmptyLineAfterAccessModifier: Never

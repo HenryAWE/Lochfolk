@@ -6,11 +6,16 @@ add_requires("minizip-ng")
 
 target("lochfolk")
     set_warnings("all", "error")
-    set_kind("static")
+    set_kind("$(kind)")
     add_includedirs("include", { public = true })
     add_headerfiles("include/(**.hpp)", { prefix = "include" })
     add_packages("minizip-ng")
     add_files("src/*.cpp")
+    if is_kind("shared") then
+        add_defines("LOCHFOLK_SHARED", { public = true })
+    end
+    add_defines("LOCHFOLK_BUILD")
+    set_symbols("hidden")
 
 option("unit_test")
     set_default(true)

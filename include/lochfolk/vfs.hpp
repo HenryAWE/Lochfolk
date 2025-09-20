@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <variant>
 #include <utility>
+#include "detail/config.hpp"
 #include "path.hpp"
 #include "archive.hpp"
 #include "stream.hpp"
@@ -190,36 +191,36 @@ public:
         }
 
         [[nodiscard]]
-        bool is_directory() const noexcept;
+        LOCHFOLK_API bool is_directory() const noexcept;
 
-        std::uint64_t file_size() const;
+        LOCHFOLK_API std::uint64_t file_size() const;
 
-        std::unique_ptr<std::streambuf> getbuf(std::ios_base::openmode mode) const;
+        LOCHFOLK_API std::unique_ptr<std::streambuf> getbuf(std::ios_base::openmode mode) const;
 
-        std::string read_string(bool convert_crlf = true) const;
+        LOCHFOLK_API std::string read_string(bool convert_crlf = true) const;
 
     private:
         const file_node* m_parent;
         mutable data_type m_data;
     };
 
-    virtual_file_system();
-    virtual_file_system(const virtual_file_system&) = delete;
+    LOCHFOLK_API virtual_file_system();
+    LOCHFOLK_API virtual_file_system(const virtual_file_system&) = delete;
 
-    ~virtual_file_system();
+    LOCHFOLK_API ~virtual_file_system();
 
-    void mount_string_constant(
+    LOCHFOLK_API void mount_string_constant(
         path_view p, std::string_view str, bool overwrite = true
     );
-    void mount_string_constant(
+    LOCHFOLK_API void mount_string_constant(
         path_view p, const char* str, bool overwrite = true
     );
 
-    void mount_string_constant(
+    LOCHFOLK_API void mount_string_constant(
         path_view p, std::string str, bool overwrite = true
     );
 
-    void mount_sys_file(
+    LOCHFOLK_API void mount_sys_file(
         path_view p, const std::filesystem::path& sys_path, bool overwrite = true
     );
 
@@ -228,26 +229,26 @@ public:
      *
      * @param dir Must be a directory
      */
-    void mount_sys_dir(
+    LOCHFOLK_API void mount_sys_dir(
         path_view p, const std::filesystem::path& dir, bool overwrite = true
     );
 
-    void mount_zip_archive(
+    LOCHFOLK_API void mount_zip_archive(
         path_view p, const std::filesystem::path& sys_path, bool overwrite = true
     );
 
     [[nodiscard]]
-    bool exists(path_view p) const;
+    LOCHFOLK_API bool exists(path_view p) const;
 
     [[nodiscard]]
-    bool is_directory(path_view p) const;
+    LOCHFOLK_API bool is_directory(path_view p) const;
 
     [[nodiscard]]
-    std::uint64_t file_size(path_view p) const;
+    LOCHFOLK_API std::uint64_t file_size(path_view p) const;
 
-    bool remove(path_view p);
+    LOCHFOLK_API bool remove(path_view p);
 
-    ivfstream open(
+    LOCHFOLK_API ivfstream open(
         path_view p, std::ios_base::openmode mode = std::ios_base::binary
     );
 
@@ -258,12 +259,12 @@ public:
      * @param convert_crlf Convert CRLF to LF for system files on Windows
      */
     [[nodiscard]]
-    std::string read_string(path_view p, bool convert_crlf = true);
+    LOCHFOLK_API std::string read_string(path_view p, bool convert_crlf = true);
 
     /**
      * @brief List all files for debugging
      */
-    void list_files(std::ostream& os);
+    LOCHFOLK_API void list_files(std::ostream& os);
 
 private:
     file_node m_root;
@@ -284,12 +285,12 @@ class access_context
 public:
     access_context() = delete;
 
-    access_context(access_context&& other) noexcept
+    constexpr access_context(access_context&& other) noexcept
         : m_vfs(other.m_vfs), m_current(std::move(other.m_current)) {}
 
-    access_context(const access_context&);
+    LOCHFOLK_API access_context(const access_context&);
 
-    access_context(virtual_file_system& vfs);
+    LOCHFOLK_API access_context(virtual_file_system& vfs);
 
     [[nodiscard]]
     const path& current_path() const noexcept
@@ -297,9 +298,9 @@ public:
         return m_current;
     }
 
-    void current_path(path_view pv);
+    LOCHFOLK_API void current_path(path_view pv);
 
-    path to_fullpath(path_view pv) const;
+    LOCHFOLK_API path to_fullpath(path_view pv) const;
 
     [[nodiscard]]
     virtual_file_system& get_vfs() const noexcept
