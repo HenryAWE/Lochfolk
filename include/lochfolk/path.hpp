@@ -97,9 +97,9 @@ public:
 
     static constexpr value_type separator = '/';
 
-    constexpr path() noexcept = default;
-    constexpr path(const path&) = default;
-    constexpr path(path&&) noexcept = default;
+    LOCHFOLK_API path() noexcept;
+    LOCHFOLK_API path(const path&);
+    LOCHFOLK_API path(path&&) noexcept;
 
     LOCHFOLK_API path(std::string str);
 

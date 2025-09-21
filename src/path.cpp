@@ -90,6 +90,10 @@ path_view path_view::extension() const noexcept
     return result;
 }
 
+path::path() noexcept = default;
+path::path(const path&) = default;
+path::path(path&&) noexcept = default;
+
 path::path(std::string str)
     : m_str(std::move(str)) {}
 

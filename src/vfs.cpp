@@ -575,6 +575,9 @@ auto virtual_file_system::mount_impl(
     }
 }
 
+access_context::access_context(access_context&& other) noexcept
+    : m_vfs(other.m_vfs), m_current(std::move(other.m_current)) {}
+
 access_context::access_context(const access_context&) = default;
 
 access_context::access_context(virtual_file_system& vfs)

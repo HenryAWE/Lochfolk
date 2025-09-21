@@ -295,8 +295,7 @@ class access_context
 public:
     access_context() = delete;
 
-    constexpr access_context(access_context&& other) noexcept
-        : m_vfs(other.m_vfs), m_current(std::move(other.m_current)) {}
+    LOCHFOLK_API access_context(access_context&& other) noexcept;
 
     LOCHFOLK_API access_context(const access_context&);
 
