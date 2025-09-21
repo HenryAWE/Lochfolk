@@ -19,7 +19,7 @@ jobs:
               arch: amd64
           - uses: xmake-io/github-action-setup-xmake@v1
             with:
-              xmake-version: v2.9.8
+              xmake-version: v3.0.2
               actions-cache-folder: '.xmake-cache'
               actions-cache-key: "windows-2022"
               package-cache: true
@@ -56,7 +56,7 @@ jobs:
           - uses: actions/checkout@v4
           - uses: xmake-io/github-action-setup-xmake@v1
             with:
-              xmake-version: v2.9.8
+              xmake-version: v3.0.2
               actions-cache-folder: '.xmake-cache'
               actions-cache-key: "linux-clang-18"
               package-cache: true
@@ -68,6 +68,43 @@ jobs:
           - name: Configure
             run: |
               xmake config --yes --policies=build.sanitizer.address -m release --unit_test=y --toolchain=clang-18 -k ${{ matrix.kind }}
+
+          - name: Build
+            run: |
+              xmake build --verbose --diagnosis --all
+
+          - name: Test
+            run: xmake test --verbose
+
+    GCC:
+        runs-on: ubuntu-24.04
+
+        name: Linux GCC 14
+        strategy:
+          matrix:
+            kind: [static, shared]
+          fail-fast: false
+
+        steps:
+          - name: Install Dependencies
+            run: |
+              sudo apt-get update
+              sudo apt-get install -y cmake ninja-build gcc-14 g++-14
+
+          - uses: actions/checkout@v4
+          - uses: xmake-io/github-action-setup-xmake@v1
+            with:
+              xmake-version: v3.0.2
+              actions-cache-folder: '.xmake-cache'
+              actions-cache-key: "linux-gcc-14"
+              package-cache: true
+              package-cache-key: "linux-gcc-14"
+              build-cache: true
+              build-cache-key: "linux-gcc-14"
+
+          - name: Configure
+            run: |
+              xmake config --yes -m release --unit_test=y --toolchain=gcc-14 -k ${{ matrix.kind }}
 
           - name: Build
             run: |
