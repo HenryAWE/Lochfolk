@@ -4,6 +4,54 @@
 
 namespace lochfolk
 {
+bool path_view::const_iterator::operator==(const const_iterator& rhs) const noexcept
+{
+    return m_sv.data() == rhs.m_sv.data() &&
+           m_pos == rhs.m_pos;
+}
+
+path_view path_view::const_iterator::operator*() const
+{
+    if(m_sv.empty() || m_pos >= m_sv.size())
+        return path_view();
+
+    std::string_view result_sv = m_sv.substr(m_pos, m_len);
+    return path_view(result_sv);
+}
+
+void path_view::const_iterator::next()
+{
+    m_pos = m_pos + m_len;
+    m_pos = m_sv.find_first_not_of(separator, m_pos);
+    if(m_pos == m_sv.npos)
+    {
+        m_pos = m_sv.size();
+        m_len = 0;
+        return;
+    }
+
+    std::size_t sep_pos = m_sv.find(separator, m_pos);
+    m_len = sep_pos == m_sv.npos ?
+                m_sv.size() - m_pos :
+                sep_pos - m_pos;
+}
+
+path_view::const_iterator path_view::begin() const
+{
+    if(empty())
+        return const_iterator();
+    if(is_absolute())
+        return const_iterator(0, 1, *this);
+
+    std::size_t len = m_str.find(separator);
+    return const_iterator(0, len, *this);
+}
+
+path_view::const_iterator path_view::end() const
+{
+    return const_iterator(m_str.size(), 0, *this);
+}
+
 bool path_view::empty() const noexcept
 {
     return m_str.empty();

@@ -70,6 +70,65 @@ public:
                );
     }
 
+    class const_iterator
+    {
+        friend path_view;
+
+        const_iterator(std::size_t pos, std::size_t len, path_view pv)
+            : m_pos(pos), m_len(len), m_sv(pv) {}
+
+    public:
+        using value_type = path_view;
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::bidirectional_iterator_tag;
+
+        const_iterator() = default;
+        const_iterator(const const_iterator&) noexcept = default;
+
+        const_iterator& operator=(const const_iterator&) noexcept = default;
+
+        LOCHFOLK_API bool operator==(const const_iterator& rhs) const noexcept;
+
+        LOCHFOLK_API path_view operator*() const;
+
+        const_iterator& operator++()
+        {
+            this->next();
+            return *this;
+        }
+
+        const_iterator operator++(int)
+        {
+            const_iterator tmp(*this);
+            ++*this;
+            return tmp;
+        }
+
+    private:
+        LOCHFOLK_API void next();
+
+        std::size_t m_pos = 0;
+        std::size_t m_len = 0;
+        std::string_view m_sv;
+    };
+
+    [[nodiscard]]
+    LOCHFOLK_API const_iterator begin() const;
+    [[nodiscard]]
+    LOCHFOLK_API const_iterator end() const;
+
+    using iterator = const_iterator;
+
+    const_iterator cbegin() const
+    {
+        return begin();
+    }
+
+    const_iterator cend() const
+    {
+        return end();
+    }
+
     [[nodiscard]]
     LOCHFOLK_API bool empty() const noexcept;
 

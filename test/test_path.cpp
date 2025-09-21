@@ -181,32 +181,41 @@ TEST(path, extension)
     EXPECT_EQ("/foo/.hidden"_pv.extension(), ""_pv);
 }
 
-// TEST(path, split_view)
-// {
-//     using namespace lochfolk::vfs_literals;
+TEST(path, iterator)
+{
+    using namespace lochfolk::vfs_literals;
 
-//     {
-//         lochfolk::path_view p = "/data/text/example.txt"_pv;
-//         auto view = p.split_view();
+    auto to_strs = [](const auto& p)
+    {
+        std::vector<std::string> result;
+        for(auto&& i : p)
+            result.push_back(i.string());
+        return result;
+    };
 
-//         std::vector<std::string> strs(view.begin(), view.end());
-//         EXPECT_EQ(strs.size(), 3);
-//         EXPECT_EQ(strs[0], "data");
-//         EXPECT_EQ(strs[1], "text");
-//         EXPECT_EQ(strs[2], "example.txt");
-//     }
+    {
+        lochfolk::path_view p = "/data/text/example.txt"_pv;
 
-//     {
-//         lochfolk::path p = "/data/text/example.txt";
-//         auto view = p.split_view();
+        std::vector strs = to_strs(p);
 
-//         std::vector<std::string> strs(view.begin(), view.end());
-//         EXPECT_EQ(strs.size(), 3);
-//         EXPECT_EQ(strs[0], "data");
-//         EXPECT_EQ(strs[1], "text");
-//         EXPECT_EQ(strs[2], "example.txt");
-//     }
-// }
+        ASSERT_EQ(strs.size(), 4);
+        EXPECT_EQ(strs[0], "/");
+        EXPECT_EQ(strs[1], "data");
+        EXPECT_EQ(strs[2], "text");
+        EXPECT_EQ(strs[3], "example.txt");
+    }
+
+    {
+        lochfolk::path_view p = "data/text/example.txt"_pv;
+
+        std::vector strs = to_strs(p);
+
+        ASSERT_EQ(strs.size(), 3);
+        EXPECT_EQ(strs[0], "data");
+        EXPECT_EQ(strs[1], "text");
+        EXPECT_EQ(strs[2], "example.txt");
+    }
+}
 
 TEST(path, lexically_normal)
 {
