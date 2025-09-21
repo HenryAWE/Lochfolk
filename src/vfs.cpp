@@ -56,7 +56,7 @@ namespace detail
         std::string_view suffix = {}
     )
     {
-        std::string_view p_sv = p;
+        std::string_view p_sv(p);
 
         std::string result;
         result.reserve(
@@ -523,7 +523,7 @@ const virtual_file_system::file_node* virtual_file_system::mkdir_impl(path_view 
         {
             it = dir->children().emplace_hint(
                 it,
-                std::string(subview),
+                subview.string(),
                 file_node(current, std::in_place_type<file_node::directory>)
             );
         }
@@ -563,7 +563,7 @@ auto virtual_file_system::mount_impl(
     else
     {
         auto result = dir->children().emplace(
-            filename,
+            filename.string(),
             file_node(current, std::in_place_type<T>, std::forward<Args>(args)...)
         );
         assert(result.second); // Emplacement should be successful here

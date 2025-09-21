@@ -26,9 +26,19 @@ public:
     {
         using is_transparent = void;
 
-        constexpr bool operator()(std::string_view lhs, std::string_view rhs) const
+        bool operator()(std::string_view lhs, std::string_view rhs) const
         {
             return lhs < rhs;
+        }
+
+        bool operator()(path_view lhs, std::string_view rhs) const
+        {
+            return std::string_view(lhs) < rhs;
+        }
+
+        bool operator()(std::string_view lhs, path_view rhs) const
+        {
+            return lhs < std::string_view(rhs);
         }
     };
 
