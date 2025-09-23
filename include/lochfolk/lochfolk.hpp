@@ -9,7 +9,6 @@
 
 #include "detail/config.hpp"
 #include "stream.hpp"
-#include "archive.hpp"
 #include "path.hpp"
 #include "vfs.hpp"
 

@@ -1,4 +1,4 @@
-#include <lochfolk/archive.hpp>
+#include "archive.hpp"
 #include <cassert>
 #include <span>
 #include <filesystem>
@@ -6,7 +6,6 @@
 #include <minizip/mz.h>
 #include <minizip/mz_zip.h>
 #include <minizip/mz_strm_os.h>
-#include <lochfolk/archive.hpp>
 
 namespace lochfolk
 {
