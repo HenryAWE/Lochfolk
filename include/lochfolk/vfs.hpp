@@ -17,11 +17,10 @@
 
 namespace lochfolk
 {
-class virtual_file_system
-{
-public:
-    class file_node;
+class virtual_file_system;
 
+namespace detail
+{
     struct string_compare
     {
         using is_transparent = void;
@@ -42,13 +41,9 @@ public:
         }
     };
 
-    using container_type = std::map<std::string, file_node, string_compare>;
+    class file_node;
 
-    class error : public std::runtime_error
-    {
-    public:
-        using runtime_error::runtime_error;
-    };
+    using file_container_type = std::map<std::string, file_node, string_compare>;
 
     class file_node
     {
@@ -82,7 +77,7 @@ public:
 
             directory(directory&&) noexcept = default;
 
-            directory(container_type c) noexcept
+            directory(file_container_type c) noexcept
                 : m_children(std::move(c)) {}
 
             directory& operator=(directory&& rhs) noexcept = default;
@@ -92,18 +87,18 @@ public:
              */
             std::uint64_t file_size() const noexcept;
 
-            container_type& children() noexcept
+            file_container_type& children() noexcept
             {
                 return m_children;
             }
 
-            const container_type& children() const noexcept
+            const file_container_type& children() const noexcept
             {
                 return m_children;
             }
 
         private:
-            container_type m_children;
+            file_container_type m_children;
         };
 
         class string_constant
@@ -213,6 +208,16 @@ public:
         const file_node* m_parent;
         mutable data_type m_data;
     };
+} // namespace detail
+
+class virtual_file_system
+{
+public:
+    class error : public std::runtime_error
+    {
+    public:
+        using runtime_error::runtime_error;
+    };
 
     LOCHFOLK_API virtual_file_system();
     LOCHFOLK_API virtual_file_system(const virtual_file_system&) = delete;
@@ -277,17 +282,17 @@ public:
     LOCHFOLK_API void list_files(std::ostream& os);
 
 private:
-    file_node m_root;
+    detail::file_node m_root;
 
-    void list_files_impl(std::ostream& os, std::string_view name, const file_node& f, unsigned int indent);
+    void list_files_impl(std::ostream& os, std::string_view name, const detail::file_node& f, unsigned int indent);
 
-    const file_node* find_impl(path_view p) const;
+    const detail::file_node* find_impl(path_view p) const;
 
-    const file_node* mkdir_impl(path_view p);
+    const detail::file_node* mkdir_impl(path_view p);
 
     template <typename T, typename... Args>
     auto mount_impl(path_view p, bool overwrite, std::in_place_type_t<T>, Args&&... args)
-        -> std::pair<const file_node*, bool>;
+        -> std::pair<const detail::file_node*, bool>;
 };
 
 class access_context
