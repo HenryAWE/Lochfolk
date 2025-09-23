@@ -7,22 +7,34 @@
 
 namespace lochfolk
 {
-virtual_file_system::virtual_file_system()
-    : m_root(std::make_unique<file_node>(nullptr, std::in_place_type<file_node::directory>))
+struct virtual_file_system::vfs_data
 {
-    assert(m_root->is_directory());
+    detail::file_node root;
+
+    vfs_data()
+        : root(nullptr, std::in_place_type<file_data::directory>) {}
+};
+
+virtual_file_system::virtual_file_system()
+    : m_vfs_data(new vfs_data())
+{
+    assert(m_vfs_data->root.is_directory());
 }
 
-virtual_file_system::~virtual_file_system() = default;
+virtual_file_system::~virtual_file_system()
+{
+    delete m_vfs_data;
+}
 
 void virtual_file_system::mount_string_constant(
     path_view p, std::string_view str, bool overwrite
 )
 {
     mount_impl(
+        m_vfs_data->root,
         p,
         overwrite,
-        std::in_place_type<file_node::string_constant>,
+        std::in_place_type<file_data::string_constant>,
         str
     );
 }
@@ -43,9 +55,10 @@ void virtual_file_system::mount_string_constant(
 )
 {
     mount_impl(
+        m_vfs_data->root,
         p,
         overwrite,
-        std::in_place_type<file_node::string_constant>,
+        std::in_place_type<file_data::string_constant>,
         std::move(str)
     );
 }
@@ -63,9 +76,10 @@ void virtual_file_system::mount_sys_file(
     else if(stdfs::is_regular_file(sys_path))
     {
         mount_impl(
+            m_vfs_data->root,
             p,
             overwrite,
-            std::in_place_type<file_node::sys_file>,
+            std::in_place_type<file_data::sys_file>,
             stdfs::absolute(sys_path)
         );
     }
@@ -95,9 +109,10 @@ void virtual_file_system::mount_sys_dir(
         stdfs::path file_path = stdfs::absolute(i);
         std::u8string filename = stdfs::relative(file_path, dir).generic_u8string();
         mount_impl(
+            m_vfs_data->root,
             base / std::string_view((const char*)filename.c_str(), filename.size()),
             overwrite,
-            std::in_place_type<file_node::sys_file>,
+            std::in_place_type<file_data::sys_file>,
             file_path
         );
     }
@@ -123,9 +138,10 @@ void virtual_file_system::mount_zip_archive(
         std::string_view filename = entry.filename();
 
         mount_impl(
+            m_vfs_data->root,
             base / filename,
             overwrite,
-            std::in_place_type<file_node::archive_entry>,
+            std::in_place_type<file_data::archive_entry>,
             *ar,
             entry.offset()
         );
@@ -134,12 +150,12 @@ void virtual_file_system::mount_zip_archive(
 
 bool virtual_file_system::exists(path_view p) const
 {
-    return find_impl(p) != nullptr;
+    return find_impl(m_vfs_data->root, p) != nullptr;
 }
 
 bool virtual_file_system::is_directory(path_view p) const
 {
-    const file_node* f = find_impl(p);
+    const auto* f = find_impl(m_vfs_data->root, p);
     if(!f)
         return false;
     return f->is_directory();
@@ -147,7 +163,7 @@ bool virtual_file_system::is_directory(path_view p) const
 
 std::uint64_t virtual_file_system::file_size(path_view p) const
 {
-    const file_node* f = find_impl(p);
+    const auto* f = find_impl(m_vfs_data->root, p);
     if(!f) [[unlikely]]
         throw error(vfs_err_msg(p, " is not found"));
 
@@ -160,14 +176,14 @@ bool virtual_file_system::remove(path_view p)
         return false;
     if(p == "/"_pv)
     {
-        auto* root_dir = m_root->get_if<file_node::directory>();
+        auto* root_dir = m_vfs_data->root.get_if<file_data::directory>();
         assert(root_dir);
 
         root_dir->children().clear();
         return true;
     }
 
-    auto* parent = find_impl(p.parent_path());
+    auto* parent = find_impl(m_vfs_data->root, p.parent_path());
     if(!parent->is_directory())
         return false;
 
@@ -183,7 +199,7 @@ bool virtual_file_system::remove(path_view p)
         return result.substr(pos + 1);
     }(p);
 
-    auto* parent_dir = parent->get_if<file_node::directory>();
+    auto* parent_dir = parent->get_if<file_data::directory>();
     auto it = parent_dir->children().find(path_view(target_sv));
     if(it == parent_dir->children().end())
         return false;
@@ -194,7 +210,7 @@ bool virtual_file_system::remove(path_view p)
 
 ivfstream virtual_file_system::open(path_view p, std::ios_base::openmode mode)
 {
-    const file_node* f = find_impl(p);
+    const auto* f = find_impl(m_vfs_data->root, p);
     if(!f)
         throw error(vfs_err_msg(p, " is not found"));
 
@@ -204,7 +220,7 @@ ivfstream virtual_file_system::open(path_view p, std::ios_base::openmode mode)
 
 std::string virtual_file_system::read_string(path_view p, bool convert_crlf)
 {
-    const file_node* f = find_impl(p);
+    const auto* f = find_impl(m_vfs_data->root, p);
     if(!f)
         throw error(vfs_err_msg(p, " is not found"));
 
@@ -213,125 +229,7 @@ std::string virtual_file_system::read_string(path_view p, bool convert_crlf)
 
 void virtual_file_system::list_files(std::ostream& os)
 {
-    list_files_impl(os, "/", *m_root, 0);
-}
-
-void virtual_file_system::list_files_impl(std::ostream& os, std::string_view name, const file_node& f, unsigned int indent)
-{
-    for(unsigned int i = 0; i < indent; ++i)
-        os << "  ";
-    bool is_dir = f.is_directory();
-    os << "- " << name;
-    if(is_dir && name != "/")
-        os << '/';
-    os << '\n';
-
-    if(is_dir)
-    {
-        auto* dir = f.get_if<file_node::directory>();
-        assert(dir != nullptr);
-        for(const auto& [sub_name, sub_f] : dir->children())
-        {
-            list_files_impl(os, sub_name, sub_f, indent + 1);
-        }
-    }
-}
-
-const file_node* virtual_file_system::find_impl(path_view p) const
-{
-    if(p.empty() || !p.is_absolute()) [[unlikely]]
-        return nullptr;
-    if(p == "/"_pv)
-        return m_root.get();
-
-    const file_node* current = m_root.get();
-    for(path_view subview : p.split_view())
-    {
-        auto* dir = current->get_if<file_node::directory>();
-        if(!dir)
-            return nullptr;
-
-        auto it = dir->children().find(std::string_view(subview));
-        if(it == dir->children().end())
-            return nullptr;
-
-        current = &it->second;
-    }
-
-    return current;
-}
-
-const file_node* virtual_file_system::mkdir_impl(path_view p)
-{
-    const file_node* current = m_root.get();
-    for(path_view subview : p.split_view())
-    {
-        assert(current->is_directory());
-        auto* dir = current->get_if<file_node::directory>();
-        assert(dir);
-
-        auto it = dir->children().find(std::string_view(subview));
-        if(it != dir->children().end())
-        {
-            if(!it->second.is_directory())
-            {
-                throw error(vfs_err_msg(subview, " already exists"));
-            }
-        }
-        else
-        {
-            it = dir->children().emplace_hint(
-                it,
-                subview.string(),
-                file_node(current, std::in_place_type<file_node::directory>)
-            );
-        }
-
-        current = &it->second;
-    }
-
-    return current;
-}
-
-template <typename T, typename... Args>
-auto virtual_file_system::mount_impl(
-    path_view p, bool overwrite, std::in_place_type_t<T>, Args&&... args
-) -> std::pair<const file_node*, bool>
-{
-    static_assert(!std::same_as<T, file_node::directory>, "Cannot mount a directory");
-    assert(p.is_absolute());
-    const file_node* current = mkdir_impl(p.parent_path());
-    path_view filename = p.filename();
-
-    auto* dir = current->get_if<file_node::directory>();
-    assert(dir);
-    auto it = dir->children().find(filename);
-    if(it != dir->children().end())
-    {
-        if(overwrite)
-        {
-            it->second = file_node(
-                current, std::in_place_type<T>, std::forward<Args>(args)...
-            );
-
-            return std::make_pair(&it->second, true);
-        }
-
-        return std::make_pair(&it->second, false);
-    }
-    else
-    {
-        auto result = dir->children().emplace(
-            filename.string(),
-            file_node(current, std::in_place_type<T>, std::forward<Args>(args)...)
-        );
-        assert(result.second); // Emplacement should be successful here
-
-        return std::make_pair(
-            &result.first->second,
-            true
-        );
-    }
+    list_files_impl(os, "/", m_vfs_data->root, 0);
 }
 
 access_context::access_context(access_context&& other) noexcept

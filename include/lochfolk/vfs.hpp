@@ -5,19 +5,22 @@
 
 #include <ios>
 #include <stdexcept>
-#include <memory>
 #include <filesystem>
-#include <utility>
 #include "detail/config.hpp"
 #include "path.hpp"
 #include "stream.hpp"
 
 namespace lochfolk
 {
-class file_node;
+namespace detail
+{
+    class file_node;
+} // namespace detail
 
 class virtual_file_system
 {
+    struct vfs_data;
+
 public:
     class error : public std::runtime_error
     {
@@ -88,17 +91,7 @@ public:
     LOCHFOLK_API void list_files(std::ostream& os);
 
 private:
-    std::unique_ptr<file_node> m_root;
-
-    void list_files_impl(std::ostream& os, std::string_view name, const file_node& f, unsigned int indent);
-
-    const file_node* find_impl(path_view p) const;
-
-    const file_node* mkdir_impl(path_view p);
-
-    template <typename T, typename... Args>
-    auto mount_impl(path_view p, bool overwrite, std::in_place_type_t<T>, Args&&... args)
-        -> std::pair<const file_node*, bool>;
+    vfs_data* m_vfs_data;
 };
 
 class access_context

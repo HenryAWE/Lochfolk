@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <iosfwd>
 #include <map>
@@ -12,6 +13,11 @@
 
 namespace lochfolk
 {
+namespace detail
+{
+    class file_node;
+}
+
 struct string_compare
 {
     using is_transparent = void;
@@ -32,34 +38,9 @@ struct string_compare
     }
 };
 
-class file_node;
-
-using file_container_type = std::map<std::string, file_node, string_compare>;
-
-class file_node
+namespace file_data
 {
-    friend class virtual_file_system;
-
-public:
-    file_node() = delete;
-
-    template <typename T, typename... Args>
-    file_node(const file_node* parent, std::in_place_type_t<T>, Args&&... args)
-        : m_parent(parent),
-          m_data(std::in_place_type<T>, std::forward<Args>(args)...)
-    {}
-
-    file_node(file_node&&) noexcept = default;
-
-    file_node& operator=(file_node&& rhs) noexcept
-    {
-        if(this == &rhs) [[unlikely]]
-            return *this;
-
-        m_parent = rhs.m_parent;
-        m_data = std::move(rhs.m_data);
-        return *this;
-    }
+    using file_container_type = std::map<std::string, detail::file_node, string_compare>;
 
     class directory
     {
@@ -74,9 +55,12 @@ public:
         directory& operator=(directory&& rhs) noexcept = default;
 
         /**
-             * @brief Always returns 0
-             */
-        std::uint64_t file_size() const noexcept;
+         * @brief Always returns 0 as a placeholder
+         */
+        std::uint64_t file_size() const noexcept
+        {
+            return 0;
+        }
 
         file_container_type& children() noexcept
         {
@@ -167,36 +151,121 @@ public:
         std::shared_ptr<archive> m_archive_ref;
         std::int64_t m_offset;
     };
+} // namespace file_data
 
-    using data_type = std::variant<
-        directory,
-        string_constant,
-        sys_file,
-        archive_entry>;
-
-    template <typename Visitor>
-    decltype(auto) visit(Visitor&& vis) const
+namespace detail
+{
+    class file_node
     {
-        return std::visit(std::forward<Visitor>(vis), m_data);
-    }
+        friend class virtual_file_system;
 
-    template <typename T>
-    T* get_if() const noexcept
+    public:
+        file_node() = delete;
+
+        template <typename T, typename... Args>
+        file_node(const file_node* parent, std::in_place_type_t<T>, Args&&... args)
+            : m_parent(parent),
+              m_data(std::in_place_type<T>, std::forward<Args>(args)...)
+        {}
+
+        file_node(file_node&&) noexcept = default;
+
+        file_node& operator=(file_node&& rhs) noexcept
+        {
+            if(this == &rhs) [[unlikely]]
+                return *this;
+
+            m_parent = rhs.m_parent;
+            m_data = std::move(rhs.m_data);
+            return *this;
+        }
+
+        using data_type = std::variant<
+            file_data::directory,
+            file_data::string_constant,
+            file_data::sys_file,
+            file_data::archive_entry>;
+
+        template <typename Visitor>
+        decltype(auto) visit(Visitor&& vis) const
+        {
+            return std::visit(std::forward<Visitor>(vis), m_data);
+        }
+
+        template <typename T>
+        T* get_if() const noexcept
+        {
+            return std::get_if<T>(&m_data);
+        }
+
+        [[nodiscard]]
+        bool is_directory() const noexcept;
+
+        std::uint64_t file_size() const;
+
+        std::unique_ptr<std::streambuf> getbuf(std::ios_base::openmode mode) const;
+
+        std::string read_string(bool convert_crlf = true) const;
+
+    private:
+        const file_node* m_parent;
+        mutable data_type m_data;
+    };
+} // namespace detail
+
+const detail::file_node* find_impl(const detail::file_node& root, path_view p);
+
+const detail::file_node* mkdir_impl(detail::file_node& root, path_view p);
+
+template <typename T, typename... Args>
+std::pair<const detail::file_node*, bool> mount_impl(
+    detail::file_node& root,
+    path_view p,
+    bool overwrite,
+    std::in_place_type_t<T>,
+    Args&&... args
+)
+{
+    static_assert(!std::same_as<T, file_data::directory>, "Cannot mount a directory");
+    assert(p.is_absolute());
+    const auto* current = mkdir_impl(root, p.parent_path());
+    path_view filename = p.filename();
+
+    auto* dir = current->get_if<file_data::directory>();
+    assert(dir);
+    auto it = dir->children().find(filename);
+    if(it != dir->children().end())
     {
-        return std::get_if<T>(&m_data);
+        if(overwrite)
+        {
+            it->second = detail::file_node(
+                current, std::in_place_type<T>, std::forward<Args>(args)...
+            );
+
+            return std::make_pair(&it->second, true);
+        }
+
+        return std::make_pair(&it->second, false);
     }
+    else
+    {
+        auto result = dir->children().emplace(
+            filename.string(),
+            detail::file_node(current, std::in_place_type<T>, std::forward<Args>(args)...)
+        );
+        assert(result.second); // Emplacement should be successful here
 
-    [[nodiscard]]
-    bool is_directory() const noexcept;
+        return std::make_pair(
+            &result.first->second,
+            true
+        );
+    }
+}
 
-    std::uint64_t file_size() const;
-
-    std::unique_ptr<std::streambuf> getbuf(std::ios_base::openmode mode) const;
-
-    std::string read_string(bool convert_crlf = true) const;
-
-private:
-    const file_node* m_parent;
-    mutable data_type m_data;
-};
+void list_files_impl(
+    std::ostream& os,
+    std::string_view name,
+    const detail::file_node& f,
+    unsigned int indent
+);
 } // namespace lochfolk
