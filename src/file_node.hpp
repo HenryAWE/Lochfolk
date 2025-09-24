@@ -157,8 +157,6 @@ namespace detail
 {
     class file_node
     {
-        friend class virtual_file_system;
-
     public:
         file_node() = delete;
 
