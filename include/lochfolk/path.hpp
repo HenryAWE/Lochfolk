@@ -5,29 +5,11 @@
 
 #include <concepts>
 #include <string>
-#include <ranges>
 #include <iterator>
 #include "detail/config.hpp"
 
 namespace lochfolk
 {
-class path_view;
-class path;
-
-namespace detail
-{
-    constexpr auto path_split_view(std::string_view sv) noexcept
-    {
-        using namespace std;
-        return sv |
-               views::split('/') |
-               views::filter(
-                   [](auto&& subrange) -> bool
-                   { return !ranges::empty(subrange); }
-               );
-    }
-} // namespace detail
-
 class path_view
 {
 public:
@@ -59,16 +41,6 @@ public:
     explicit operator std::string_view() const noexcept
     {
         return m_str;
-    }
-
-    [[nodiscard]]
-    constexpr auto split_view() const noexcept
-    {
-        return detail::path_split_view(m_str) |
-               std::views::transform(
-                   [](auto&& subrange)
-                   { return path_view(std::string_view(subrange.begin(), subrange.end())); }
-               );
     }
 
     class const_iterator
@@ -263,13 +235,6 @@ public:
 
     [[nodiscard]]
     LOCHFOLK_API path extension() const;
-
-    constexpr auto split_view() const
-    {
-        return detail::path_split_view(m_str) |
-               std::views::transform([](auto&& subrange)
-                                     { return path_view(std::string_view(subrange.begin(), subrange.end())); });
-    }
 
     LOCHFOLK_API path& append(path_view p);
 

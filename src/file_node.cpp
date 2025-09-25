@@ -182,8 +182,14 @@ const detail::file_node* find_impl(const detail::file_node& root, path_view p)
         return &root;
 
     const auto* current = &root;
-    for(path_view subview : p.split_view())
+    for(path_view subview : p)
     {
+        if(std::string_view(subview) == "/")
+        {
+            current = &root;
+            continue;
+        }
+
         auto* dir = current->get_if<file_data::directory>();
         if(!dir)
             return nullptr;
@@ -200,9 +206,14 @@ const detail::file_node* find_impl(const detail::file_node& root, path_view p)
 
 const detail::file_node* mkdir_impl(detail::file_node& root, path_view p)
 {
+    assert(root.is_directory());
+
     const auto* current = &root;
-    for(path_view subview : p.split_view())
+    for(path_view subview : p)
     {
+        if(std::string_view(subview) == "/")
+            continue;
+
         assert(current->is_directory());
         auto* dir = current->get_if<file_data::directory>();
         assert(dir);
