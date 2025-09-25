@@ -202,6 +202,19 @@ path_view path::view() const noexcept
     return path_view(m_str);
 }
 
+path::const_iterator::const_iterator(const underlying_type& other) noexcept
+    : m_base(other) {}
+
+path::const_iterator path::cbegin() const
+{
+    return const_iterator(view().cbegin());
+}
+
+path::const_iterator path::cend() const
+{
+    return const_iterator(view().cend());
+}
+
 bool path::empty() const
 {
     return m_str.empty();

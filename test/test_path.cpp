@@ -304,6 +304,18 @@ TEST(path, iterator_backward)
     }
 
     {
+        lochfolk::path p = "//data/text/example.txt";
+
+        std::vector strs = to_strs(p);
+
+        ASSERT_EQ(strs.size(), 4);
+        EXPECT_EQ(strs[0], "example.txt");
+        EXPECT_EQ(strs[1], "text");
+        EXPECT_EQ(strs[2], "data");
+        EXPECT_EQ(strs[3], "/");
+    }
+
+    {
         lochfolk::path_view p = "data/text/example.txt"_pv;
 
         std::vector strs = to_strs(p);
@@ -316,6 +328,17 @@ TEST(path, iterator_backward)
 
     {
         lochfolk::path_view p = "data/text//example.txt"_pv;
+
+        std::vector strs = to_strs(p);
+
+        ASSERT_EQ(strs.size(), 3);
+        EXPECT_EQ(strs[0], "example.txt");
+        EXPECT_EQ(strs[1], "text");
+        EXPECT_EQ(strs[2], "data");
+    }
+
+    {
+        lochfolk::path p = "data/text//example.txt";
 
         std::vector strs = to_strs(p);
 

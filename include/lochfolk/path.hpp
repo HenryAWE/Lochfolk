@@ -221,6 +221,99 @@ public:
         return view();
     }
 
+    class const_iterator
+    {
+        friend path;
+
+        using underlying_type = path_view::const_iterator;
+
+        explicit const_iterator(const underlying_type& other) noexcept;
+
+    public:
+        using value_type = path_view;
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::bidirectional_iterator_tag;
+
+        const_iterator() noexcept;
+        const_iterator(const const_iterator&) noexcept = default;
+
+        bool operator==(const const_iterator& rhs) const noexcept = default;
+
+        path_view operator*() const
+        {
+            return m_base.operator*();
+        }
+
+        const_iterator& operator++()
+        {
+            m_base.operator++();
+            return *this;
+        }
+
+        const_iterator operator++(int)
+        {
+            const_iterator tmp(*this);
+            ++*this;
+            return tmp;
+        }
+
+        const_iterator& operator--()
+        {
+            m_base.operator--();
+            return *this;
+        }
+
+        const_iterator operator--(int)
+        {
+            const_iterator tmp(*this);
+            --*this;
+            return tmp;
+        }
+
+    private:
+        underlying_type m_base;
+    };
+
+    [[nodiscard]]
+    LOCHFOLK_API const_iterator cbegin() const;
+    [[nodiscard]]
+    LOCHFOLK_API const_iterator cend() const;
+
+    using iterator = const_iterator;
+
+    iterator begin() const
+    {
+        return cbegin();
+    }
+
+    iterator end() const
+    {
+        return cend();
+    }
+
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    using reverse_iterator = const_reverse_iterator;
+
+    const_reverse_iterator crbegin() const
+    {
+        return const_reverse_iterator(end());
+    }
+
+    const_reverse_iterator crend() const
+    {
+        return const_reverse_iterator(begin());
+    }
+
+    reverse_iterator rbegin() const
+    {
+        return crbegin();
+    }
+
+    reverse_iterator rend() const
+    {
+        return crend();
+    }
+
     [[nodiscard]]
     LOCHFOLK_API bool empty() const;
 
