@@ -4,6 +4,9 @@
 
 namespace lochfolk
 {
+path_view::const_iterator::const_iterator(std::size_t pos, std::size_t len, path_view pv) noexcept
+    : m_pos(pos), m_len(len), m_sv(pv) {}
+
 bool path_view::const_iterator::operator==(const const_iterator& rhs) const noexcept
 {
     return m_sv.data() == rhs.m_sv.data() &&
@@ -36,7 +39,40 @@ void path_view::const_iterator::next()
                 sep_pos - m_pos;
 }
 
-path_view::const_iterator path_view::begin() const
+void path_view::const_iterator::prev()
+{
+    if(m_pos == 0) [[unlikely]]
+    {
+        m_len = 0;
+        return;
+    };
+
+    std::size_t sep_pos = [&]() -> std::size_t
+    {
+        std::size_t i = m_pos;
+        for(; i > 0; --i)
+        {
+            if(m_sv[i - 1] != separator)
+                return i;
+        }
+
+        return i;
+    }();
+
+    if(sep_pos == 0) // Special case for the leading separator
+    {
+        m_pos = 0;
+        m_len = 1;
+        return;
+    }
+
+    std::size_t new_pos = m_sv.rfind(separator, sep_pos - 1); // Subtract 1 to skip the separator
+
+    m_pos = new_pos == m_sv.npos ? 0 : new_pos + 1;
+    m_len = sep_pos - m_pos;
+}
+
+path_view::const_iterator path_view::cbegin() const
 {
     if(empty())
         return const_iterator();
@@ -47,7 +83,7 @@ path_view::const_iterator path_view::begin() const
     return const_iterator(0, len, *this);
 }
 
-path_view::const_iterator path_view::end() const
+path_view::const_iterator path_view::cend() const
 {
     return const_iterator(m_str.size(), 0, *this);
 }

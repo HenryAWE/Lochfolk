@@ -6,6 +6,7 @@
 #include <concepts>
 #include <string>
 #include <ranges>
+#include <iterator>
 #include "detail/config.hpp"
 
 namespace lochfolk
@@ -74,15 +75,14 @@ public:
     {
         friend path_view;
 
-        const_iterator(std::size_t pos, std::size_t len, path_view pv)
-            : m_pos(pos), m_len(len), m_sv(pv) {}
+        const_iterator(std::size_t pos, std::size_t len, path_view pv) noexcept;
 
     public:
         using value_type = path_view;
         using difference_type = std::ptrdiff_t;
         using iterator_category = std::bidirectional_iterator_tag;
 
-        const_iterator() = default;
+        const_iterator() noexcept = default;
         const_iterator(const const_iterator&) noexcept = default;
 
         const_iterator& operator=(const const_iterator&) noexcept = default;
@@ -104,8 +104,22 @@ public:
             return tmp;
         }
 
+        const_iterator& operator--()
+        {
+            this->prev();
+            return *this;
+        }
+
+        const_iterator operator--(int)
+        {
+            const_iterator tmp(*this);
+            --*this;
+            return tmp;
+        }
+
     private:
         LOCHFOLK_API void next();
+        LOCHFOLK_API void prev();
 
         std::size_t m_pos = 0;
         std::size_t m_len = 0;
@@ -113,20 +127,43 @@ public:
     };
 
     [[nodiscard]]
-    LOCHFOLK_API const_iterator begin() const;
+    LOCHFOLK_API const_iterator cbegin() const;
     [[nodiscard]]
-    LOCHFOLK_API const_iterator end() const;
+    LOCHFOLK_API const_iterator cend() const;
 
     using iterator = const_iterator;
 
-    const_iterator cbegin() const
+    iterator begin() const
     {
-        return begin();
+        return cbegin();
     }
 
-    const_iterator cend() const
+    iterator end() const
     {
-        return end();
+        return cend();
+    }
+
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    using reverse_iterator = const_reverse_iterator;
+
+    const_reverse_iterator crbegin() const
+    {
+        return const_reverse_iterator(end());
+    }
+
+    const_reverse_iterator crend() const
+    {
+        return const_reverse_iterator(begin());
+    }
+
+    reverse_iterator rbegin() const
+    {
+        return crbegin();
+    }
+
+    reverse_iterator rend() const
+    {
+        return crend();
     }
 
     [[nodiscard]]

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <lochfolk/path.hpp>
+#include <algorithm>
 
 TEST(path, constructor)
 {
@@ -181,9 +182,12 @@ TEST(path, extension)
     EXPECT_EQ("/foo/.hidden"_pv.extension(), ""_pv);
 }
 
-TEST(path, iterator)
+TEST(path, iterator_forward)
 {
     using namespace lochfolk::vfs_literals;
+
+    using traits = std::iterator_traits<lochfolk::path_view::const_iterator>;
+    static_assert(std::is_convertible_v<traits::iterator_category, std::bidirectional_iterator_tag>);
 
     auto to_strs = [](const auto& p)
     {
@@ -206,6 +210,18 @@ TEST(path, iterator)
     }
 
     {
+        lochfolk::path_view p = "//data/text/example.txt"_pv;
+
+        std::vector strs = to_strs(p);
+
+        ASSERT_EQ(strs.size(), 4);
+        EXPECT_EQ(strs[0], "/");
+        EXPECT_EQ(strs[1], "data");
+        EXPECT_EQ(strs[2], "text");
+        EXPECT_EQ(strs[3], "example.txt");
+    }
+
+    {
         lochfolk::path_view p = "data/text/example.txt"_pv;
 
         std::vector strs = to_strs(p);
@@ -214,6 +230,118 @@ TEST(path, iterator)
         EXPECT_EQ(strs[0], "data");
         EXPECT_EQ(strs[1], "text");
         EXPECT_EQ(strs[2], "example.txt");
+    }
+
+    {
+        lochfolk::path_view p = "data//text/example.txt"_pv;
+
+        std::vector strs = to_strs(p);
+
+        ASSERT_EQ(strs.size(), 3);
+        EXPECT_EQ(strs[0], "data");
+        EXPECT_EQ(strs[1], "text");
+        EXPECT_EQ(strs[2], "example.txt");
+    }
+
+    {
+        lochfolk::path_view p = "data//text/example.txt"_pv;
+
+        std::vector<std::string> vec;
+        std::transform(
+            p.begin(),
+            p.end(),
+            std::back_inserter(vec),
+            [](auto&& p)
+            {
+                return p.string();
+            }
+        );
+        EXPECT_EQ(
+            to_strs(p),
+            vec
+        );
+    }
+}
+
+TEST(path, iterator_backward)
+{
+    using namespace lochfolk::vfs_literals;
+
+    auto to_strs = [](const auto& p)
+    {
+        std::vector<std::string> result;
+        auto it = p.end();
+        while(it != p.begin())
+        {
+            --it;
+            result.push_back((*it).string());
+        }
+        return result;
+    };
+
+    {
+        lochfolk::path_view p = "/data/text/example.txt"_pv;
+
+        std::vector strs = to_strs(p);
+
+        ASSERT_EQ(strs.size(), 4);
+        EXPECT_EQ(strs[0], "example.txt");
+        EXPECT_EQ(strs[1], "text");
+        EXPECT_EQ(strs[2], "data");
+        EXPECT_EQ(strs[3], "/");
+    }
+
+    {
+        lochfolk::path_view p = "//data/text/example.txt"_pv;
+
+        std::vector strs = to_strs(p);
+
+        ASSERT_EQ(strs.size(), 4);
+        EXPECT_EQ(strs[0], "example.txt");
+        EXPECT_EQ(strs[1], "text");
+        EXPECT_EQ(strs[2], "data");
+        EXPECT_EQ(strs[3], "/");
+    }
+
+    {
+        lochfolk::path_view p = "data/text/example.txt"_pv;
+
+        std::vector strs = to_strs(p);
+
+        ASSERT_EQ(strs.size(), 3);
+        EXPECT_EQ(strs[0], "example.txt");
+        EXPECT_EQ(strs[1], "text");
+        EXPECT_EQ(strs[2], "data");
+    }
+
+    {
+        lochfolk::path_view p = "data/text//example.txt"_pv;
+
+        std::vector strs = to_strs(p);
+
+        ASSERT_EQ(strs.size(), 3);
+        EXPECT_EQ(strs[0], "example.txt");
+        EXPECT_EQ(strs[1], "text");
+        EXPECT_EQ(strs[2], "data");
+    }
+
+    {
+        lochfolk::path_view p = "data//text/example.txt"_pv;
+
+        std::vector<std::string> vec;
+        std::transform(
+            p.rbegin(),
+            p.rend(),
+            std::back_inserter(vec),
+            [](auto&& p)
+            {
+                return p.string();
+            }
+        );
+        EXPECT_EQ(
+            to_strs(p),
+            vec
+        );
     }
 }
 
