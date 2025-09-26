@@ -26,7 +26,7 @@ virtual_file_system::~virtual_file_system()
     delete m_vfs_data;
 }
 
-void virtual_file_system::mount_string_constant(
+void virtual_file_system::mount_string(
     path_view p, std::string_view str, bool overwrite
 )
 {
@@ -39,18 +39,18 @@ void virtual_file_system::mount_string_constant(
     );
 }
 
-void virtual_file_system::mount_string_constant(
+void virtual_file_system::mount_string(
     path_view p, const char* str, bool overwrite
 )
 {
-    mount_string_constant(
+    mount_string(
         p,
         std::string_view(str),
         overwrite
     );
 }
 
-void virtual_file_system::mount_string_constant(
+void virtual_file_system::mount_string(
     path_view p, std::string str, bool overwrite
 )
 {
@@ -63,7 +63,7 @@ void virtual_file_system::mount_string_constant(
     );
 }
 
-void virtual_file_system::mount_sys_file(
+void virtual_file_system::mount_file(
     path_view p, const std::filesystem::path& sys_path, bool overwrite
 )
 {
@@ -89,7 +89,7 @@ void virtual_file_system::mount_sys_file(
     }
 }
 
-void virtual_file_system::mount_sys_dir(
+void virtual_file_system::mount_dir(
     path_view p, const std::filesystem::path& dir, bool overwrite
 )
 {
@@ -118,7 +118,7 @@ void virtual_file_system::mount_sys_dir(
     }
 }
 
-void virtual_file_system::mount_zip_archive(
+void virtual_file_system::mount_archive(
     path_view p, const std::filesystem::path& sys_path, bool overwrite
 )
 {

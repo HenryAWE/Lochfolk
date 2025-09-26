@@ -9,7 +9,7 @@ using namespace lochfolk::vfs_literals;
 
 lochfolk::virtual_file_system vfs;
 
-vfs.mount_zip_archive("/archive"_pv, "system/path/to/archive.zip");
+vfs.mount_archive("/archive"_pv, "system/path/to/archive.zip");
 
 {
     auto vfss = vfs.open("/archive/info.txt"_pv);
@@ -37,8 +37,8 @@ using namespace lochfolk::vfs_literals;
 
 lochfolk::virtual_file_system vfs;
 
-vfs.mount_sys_dir("/data"_pv, "test_vfs_data/dir/");
-vfs.mount_sys_file("/data/example.txt"_pv, "test_vfs_data/example.txt");
+vfs.mount_dir("/data"_pv, "test_vfs_data/dir/");
+vfs.mount_file("/data/example.txt"_pv, "test_vfs_data/example.txt");
 vfs.list_files(std::cerr);
 
 assert(vfs.is_directory("/data/nested"_pv));
@@ -77,7 +77,7 @@ using namespace lochfolk::vfs_literals;
 
 lochfolk::virtual_file_system vfs;
 
-vfs.mount_string_constant("/data/text/example.txt"_pv, "123 456");
+vfs.mount_string("/data/text/example.txt"_pv, "123 456");
 
 assert(vfs.exists("/data/text/example.txt"_pv));
 assert(!vfs.is_directory("/data/text/example.txt"_pv));

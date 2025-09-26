@@ -154,7 +154,6 @@ public:
     [[nodiscard]]
     LOCHFOLK_API path_view extension() const noexcept;
 
-
 private:
     std::string_view m_str;
 };

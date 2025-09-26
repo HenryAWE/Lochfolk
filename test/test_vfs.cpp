@@ -7,7 +7,7 @@ TEST(vfs, mount_string_constant)
 
     lochfolk::virtual_file_system vfs;
 
-    vfs.mount_string_constant("/data/text/example.txt"_pv, "123 456");
+    vfs.mount_string("/data/text/example.txt"_pv, "123 456");
     vfs.list_files(std::cerr);
 
     EXPECT_TRUE(vfs.exists("/"_pv));
@@ -36,7 +36,7 @@ TEST(vfs, mount_string_constant)
         EXPECT_EQ(str, "123 456");
     }
 
-    vfs.mount_string_constant("/data/text/example.txt"_pv, std::string("1013"));
+    vfs.mount_string("/data/text/example.txt"_pv, std::string("1013"));
     EXPECT_TRUE(vfs.exists("/data/text/example.txt"_pv));
     EXPECT_FALSE(vfs.is_directory("/data/text/example.txt"_pv));
 
@@ -81,7 +81,7 @@ TEST(vfs, mount_sys_file)
 
     lochfolk::virtual_file_system vfs;
 
-    vfs.mount_sys_file("/text/example.txt"_pv, "test_vfs_data/example.txt");
+    vfs.mount_file("/text/example.txt"_pv, "test_vfs_data/example.txt");
     vfs.list_files(std::cerr);
 
     EXPECT_TRUE(vfs.exists("/"_pv));
@@ -130,8 +130,8 @@ TEST(vfs, mount_sys_dir)
 
     lochfolk::virtual_file_system vfs;
 
-    vfs.mount_sys_dir("/data"_pv, "test_vfs_data/dir/");
-    vfs.mount_sys_file("/data/example.txt"_pv, "test_vfs_data/example.txt");
+    vfs.mount_dir("/data"_pv, "test_vfs_data/dir/");
+    vfs.mount_file("/data/example.txt"_pv, "test_vfs_data/example.txt");
     vfs.list_files(std::cerr);
 
     EXPECT_TRUE(vfs.is_directory("/data/nested"_pv));
@@ -175,7 +175,7 @@ TEST(vfs, mount_zip_archive)
 
     lochfolk::virtual_file_system vfs;
 
-    vfs.mount_zip_archive("/archive"_pv, "test_vfs_data/ar.zip");
+    vfs.mount_archive("/archive"_pv, "test_vfs_data/ar.zip");
     vfs.list_files(std::cerr);
 
     EXPECT_TRUE(vfs.is_directory("/archive"_pv));
@@ -216,8 +216,8 @@ TEST(vfs, access_context)
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_string_constant("/data/strings/str.txt"_pv, "str");
-    vfs.mount_string_constant("/info/info.txt"_pv, "1013");
+    vfs.mount_string("/data/strings/str.txt"_pv, "str");
+    vfs.mount_string("/info/info.txt"_pv, "1013");
 
     lochfolk::access_context ctx(vfs);
     EXPECT_EQ(&ctx.get_vfs(), &vfs);
@@ -290,7 +290,7 @@ TEST(vfs, access_context_archive)
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_zip_archive("/archive"_pv, "test_vfs_data/ar.zip");
+    vfs.mount_archive("/archive"_pv, "test_vfs_data/ar.zip");
     vfs.list_files(std::cerr);
 
     lochfolk::access_context ctx(vfs);

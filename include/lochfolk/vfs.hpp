@@ -33,18 +33,18 @@ public:
 
     LOCHFOLK_API ~virtual_file_system();
 
-    LOCHFOLK_API void mount_string_constant(
+    LOCHFOLK_API void mount_string(
         path_view p, std::string_view str, bool overwrite = true
     );
-    LOCHFOLK_API void mount_string_constant(
+    LOCHFOLK_API void mount_string(
         path_view p, const char* str, bool overwrite = true
     );
 
-    LOCHFOLK_API void mount_string_constant(
+    LOCHFOLK_API void mount_string(
         path_view p, std::string str, bool overwrite = true
     );
 
-    LOCHFOLK_API void mount_sys_file(
+    LOCHFOLK_API void mount_file(
         path_view p, const std::filesystem::path& sys_path, bool overwrite = true
     );
 
@@ -53,11 +53,11 @@ public:
      *
      * @param dir Must be a directory
      */
-    LOCHFOLK_API void mount_sys_dir(
+    LOCHFOLK_API void mount_dir(
         path_view p, const std::filesystem::path& dir, bool overwrite = true
     );
 
-    LOCHFOLK_API void mount_zip_archive(
+    LOCHFOLK_API void mount_archive(
         path_view p, const std::filesystem::path& sys_path, bool overwrite = true
     );
 
