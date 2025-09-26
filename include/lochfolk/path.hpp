@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <iosfwd>
 #include <concepts>
 #include <string>
 #include <iterator>
@@ -153,9 +154,12 @@ public:
     [[nodiscard]]
     LOCHFOLK_API path_view extension() const noexcept;
 
+
 private:
     std::string_view m_str;
 };
+
+LOCHFOLK_API std::ostream& operator<<(std::ostream& os, const path_view& pv);
 
 class path
 {
@@ -391,6 +395,8 @@ public:
 private:
     std::string m_str;
 };
+
+LOCHFOLK_API std::ostream& operator<<(std::ostream& os, const path& p);
 
 inline namespace vfs_literals
 {

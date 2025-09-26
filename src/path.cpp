@@ -1,4 +1,5 @@
 #include <lochfolk/path.hpp>
+#include <iostream>
 #include <algorithm>
 #include <iterator>
 
@@ -172,6 +173,16 @@ path_view path_view::extension() const noexcept
     result.m_str = result.m_str.substr(pos);
 
     return result;
+}
+
+std::ostream& operator<<(std::ostream& os, const path_view& pv)
+{
+    // Similar to operator<< for std::filesystem::path
+    std::string_view sv(pv);
+    if(sv.empty())
+        return os;
+    os << '"' << sv << '"';
+    return os;
 }
 
 path::path() noexcept = default;
@@ -365,5 +376,11 @@ ordinary:
     if(result.empty())
         return path(".");
     return path(std::move(result));
+}
+
+std::ostream& operator<<(std::ostream& os, const path& p)
+{
+    os << p.view();
+    return os;
 }
 } // namespace lochfolk

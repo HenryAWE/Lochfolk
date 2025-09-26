@@ -1,27 +1,39 @@
 #include <gtest/gtest.h>
 #include <lochfolk/path.hpp>
 #include <algorithm>
+#include <sstream>
 
 TEST(path, constructor)
 {
+    auto ss_helper = [](const lochfolk::path& p)
+    {
+        std::stringstream ss;
+        ss << p;
+        return std::move(ss).str();
+    };
+
     {
         lochfolk::path p;
         EXPECT_TRUE(p.empty());
+        EXPECT_EQ(ss_helper(p), "");
     }
 
     {
         lochfolk::path p = "/data/a.txt";
         EXPECT_EQ(p.string(), "/data/a.txt");
+        EXPECT_EQ(ss_helper(p), "\"/data/a.txt\"");
     }
 
     {
         lochfolk::path p = "audio/a.wav";
         EXPECT_EQ(p.string(), "audio/a.wav");
+        EXPECT_EQ(ss_helper(p), "\"audio/a.wav\"");
     }
 
     {
         lochfolk::path p = "data";
         EXPECT_EQ(p.string(), "data");
+        EXPECT_EQ(ss_helper(p), "\"data\"");
     }
 }
 
