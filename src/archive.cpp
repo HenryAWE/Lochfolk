@@ -6,6 +6,8 @@
 #include <minizip/mz.h>
 #include <minizip/mz_zip.h>
 #include <minizip/mz_strm_os.h>
+#include <lochfolk/io.hpp>
+#include "fh/any.hpp"
 
 namespace lochfolk
 {
@@ -72,7 +74,8 @@ std::string zip_archive::minizip_error::translate_error(std::int32_t err)
         LOCHFOLK_TRANSLATE_MZ_ERROR(MZ_SIGN_ERROR);
         LOCHFOLK_TRANSLATE_MZ_ERROR(MZ_SYMLINK_ERROR);
 
-    [[unlikely]] default:
+    [[unlikely]]
+    default:
         return "MZ_ERROR(" + std::to_string(err) + ')';
     }
 
@@ -189,6 +192,11 @@ bool zip_archive::current_is_dir() const
 std::int64_t zip_archive::current_offset() const
 {
     return mz_zip_get_entry(m_handle.get());
+}
+
+std::unique_ptr<file_handle> zip_archive::get_fh_of(std::int64_t offset, file_flag flags, bool convert_crlf)
+{
+    return make_unique_const_bytes(read_bytes(offset));
 }
 
 void zip_archive::open_entry() const

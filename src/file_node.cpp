@@ -5,6 +5,7 @@
 #include <lochfolk/vfs.hpp>
 #include <lochfolk/utility.hpp>
 #include "errmsg.hpp"
+#include "fh/any.hpp"
 
 namespace lochfolk
 {
@@ -31,6 +32,14 @@ namespace file_data
             },
             m_str_data
         );
+    }
+
+    std::unique_ptr<file_handle> string_constant::get_fh(
+        file_flag flags, bool convert_crlf
+    )
+    {
+        (void)convert_crlf;
+        return std::make_unique<fh_span>(view());
     }
 
     std::string string_constant::read_string(bool convert_crlf) const
@@ -67,6 +76,14 @@ namespace file_data
             throw virtual_file_system::error(stdfs_err_msg("failed to open ", m_sys_path));
 
         return fb;
+    }
+
+    std::unique_ptr<file_handle> sys_file::get_fh(
+        file_flag flags, bool convert_crlf
+    )
+    {
+        // TODO: Optimize
+        return std::make_unique<fh_const_bytes<std::string>>(read_string(convert_crlf));
     }
 
     std::string sys_file::read_string(bool convert_crlf) const
@@ -115,6 +132,13 @@ namespace file_data
         return m_archive_ref->getbuf(m_offset, mode);
     }
 
+    std::unique_ptr<file_handle> archive_entry::get_fh(
+        file_flag flags, bool convert_crlf
+    )
+    {
+        return m_archive_ref->get_fh_of(m_offset, flags, convert_crlf);
+    }
+
     std::string archive_entry::read_string(bool convert_crlf) const
     {
         (void)convert_crlf;
@@ -156,6 +180,16 @@ namespace detail
                 if constexpr(has_buf)
                     return v.open(mode);
                 throw virtual_file_system::error("bad file");
+            }
+        );
+    }
+
+    std::unique_ptr<file_handle> file_node::get_fh(file_flag flags, bool convert_crlf) const
+    {
+        return visit(
+            [flags, convert_crlf]<typename T>(T&& v)
+            {
+                return v.get_fh(flags, convert_crlf);
             }
         );
     }

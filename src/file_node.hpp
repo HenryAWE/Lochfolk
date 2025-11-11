@@ -9,6 +9,7 @@
 #include <memory>
 #include <filesystem>
 #include <lochfolk/path.hpp>
+#include <lochfolk/io.hpp>
 #include "archive.hpp"
 
 namespace lochfolk
@@ -72,6 +73,15 @@ namespace file_data
             return m_children;
         }
 
+        std::unique_ptr<file_handle> get_fh(
+            file_flag flags, bool convert_crlf
+        )
+        {
+            (void)flags;
+            (void)convert_crlf;
+            return nullptr;
+        }
+
     private:
         file_container_type m_children;
     };
@@ -94,6 +104,10 @@ namespace file_data
         string_constant& operator=(string_constant&& rhs) noexcept = default;
 
         std::unique_ptr<std::streambuf> open(std::ios_base::openmode mode) const;
+
+        std::unique_ptr<file_handle> get_fh(
+            file_flag flags, bool convert_crlf
+        );
 
         std::string read_string(bool convert_crlf) const;
 
@@ -119,6 +133,10 @@ namespace file_data
 
         std::unique_ptr<std::filebuf> open(std::ios_base::openmode mode) const;
 
+        std::unique_ptr<file_handle> get_fh(
+            file_flag flags, bool convert_crlf
+        );
+
         std::string read_string(bool convert_crlf) const;
 
         std::uint64_t file_size() const;
@@ -142,6 +160,10 @@ namespace file_data
         archive_entry& operator=(archive_entry&& rhs) noexcept;
 
         std::unique_ptr<std::streambuf> open(std::ios_base::openmode mode) const;
+
+        std::unique_ptr<file_handle> get_fh(
+            file_flag flags, bool convert_crlf
+        );
 
         std::string read_string(bool convert_crlf) const;
 
@@ -202,6 +224,8 @@ namespace detail
         std::uint64_t file_size() const;
 
         std::unique_ptr<std::streambuf> getbuf(std::ios_base::openmode mode) const;
+
+        std::unique_ptr<file_handle> get_fh(file_flag flags, bool convert_crlf) const;
 
         std::string read_string(bool convert_crlf = true) const;
 

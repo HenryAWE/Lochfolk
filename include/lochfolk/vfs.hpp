@@ -9,6 +9,7 @@
 #include "detail/config.hpp"
 #include "path.hpp"
 #include "stream.hpp"
+#include "io.hpp"
 
 namespace lochfolk
 {
@@ -71,6 +72,12 @@ public:
     LOCHFOLK_API std::uint64_t file_size(path_view p) const;
 
     LOCHFOLK_API bool remove(path_view p);
+
+    LOCHFOLK_API std::unique_ptr<file_handle> fopen(
+        path_view p,
+        file_flag flags = file_flag::readable,
+        bool convert_crlf = false
+    );
 
     LOCHFOLK_API ivfstream open(
         path_view p, std::ios_base::openmode mode = std::ios_base::binary

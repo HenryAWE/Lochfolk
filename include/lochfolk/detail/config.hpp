@@ -21,4 +21,11 @@
 #    define LOCHFOLK_API
 #endif
 
+#ifdef __unix__
+#    include <unistd.h>
+#    ifdef _POSIX_VERSION
+#        define LOCHFOLK_IMPL_POSIX _POSIX_VERSION
+#    endif
+#endif
+
 #endif

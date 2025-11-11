@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <filesystem>
+#include <lochfolk/io.hpp>
 
 namespace lochfolk
 {
@@ -34,6 +35,8 @@ public:
     virtual std::uint64_t get_file_size(
         std::int64_t offset
     ) const = 0;
+
+    virtual std::unique_ptr<file_handle> get_fh_of(std::int64_t offset, file_flag flags, bool convert_crlf) = 0;
 };
 
 /**
@@ -157,6 +160,8 @@ public:
     {
         return current_entry(*this);
     }
+
+    std::unique_ptr<file_handle> get_fh_of(std::int64_t offset, file_flag flags, bool convert_crlf) override;
 
 private:
     void open_entry() const;

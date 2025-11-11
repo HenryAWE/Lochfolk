@@ -208,6 +208,15 @@ bool virtual_file_system::remove(path_view p)
     return true;
 }
 
+std::unique_ptr<file_handle> virtual_file_system::fopen(
+    path_view p,
+    file_flag flags,
+    bool convert_crlf
+)
+{
+    return nullptr;
+}
+
 ivfstream virtual_file_system::open(path_view p, std::ios_base::openmode mode)
 {
     const auto* f = find_impl(m_vfs_data->root, p);
