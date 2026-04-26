@@ -25,8 +25,24 @@ public:
     [[nodiscard]]
     bool is_open() const noexcept;
 
+    [[nodiscard]]
+    bool valid() const noexcept override;
+
+    [[nodiscard]]
+    file_flag get_flags() const override;
+
+    [[nodiscard]]
+    std::uint64_t file_size() const override;
+
+    bool seek(std::int64_t off, whence w) override;
+
+    io_result read(std::span<std::byte> buf, std::uint64_t size) override;
+
+    io_result write(std::span<const std::byte> buf) override;
+
 private:
     int m_fd;
+    std::uint64_t m_pos;
 };
 } // namespace lochfolk
 

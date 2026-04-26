@@ -1,4 +1,5 @@
 #include <lochfolk/stream.hpp>
+#include "fh/streambuf.hpp"
 
 namespace lochfolk
 {
@@ -9,6 +10,13 @@ ivfstream::ivfstream(ivfstream&& other) noexcept
 ivfstream::ivfstream(std::unique_ptr<std::streambuf> buf)
     : my_base(buf.get()),
       m_buf(std::move(buf)) {}
+
+ivfstream::ivfstream(std::unique_ptr<file_handle> fh)
+    : my_base(nullptr),
+      m_buf(std::make_unique<fh_streambuf>(std::move(fh)))
+{
+    my_base::rdbuf(m_buf.get());
+}
 
 ivfstream::~ivfstream() = default;
 

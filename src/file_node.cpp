@@ -3,37 +3,14 @@
 #include <fstream>
 #include <sstream>
 #include <lochfolk/vfs.hpp>
-#include <lochfolk/utility.hpp>
 #include "errmsg.hpp"
 #include "fh/any.hpp"
+#include "fh/posix.hpp"
 
 namespace lochfolk
 {
 namespace file_data
 {
-    std::unique_ptr<std::streambuf> string_constant::open(
-        std::ios_base::openmode mode
-    ) const
-    {
-        mode &= ~std::ios_base::out;
-
-        return std::visit(
-            [mode]<typename T>(const T& v) -> std::unique_ptr<std::streambuf>
-            {
-                if constexpr(std::same_as<std::remove_cvref_t<T>, std::string_view>)
-                {
-                    std::span<char> sp(const_cast<char*>(v.data()), v.size());
-                    return std::make_unique<span_buf>(sp, mode);
-                }
-                else // std::string
-                {
-                    return std::make_unique<std::stringbuf>(v, mode);
-                }
-            },
-            m_str_data
-        );
-    }
-
     std::unique_ptr<file_handle> string_constant::get_fh(
         file_flag flags, bool convert_crlf
     )
@@ -66,24 +43,13 @@ namespace file_data
         );
     }
 
-    std::unique_ptr<std::filebuf> sys_file::open(
-        std::ios_base::openmode mode
-    ) const
-    {
-        std::unique_ptr fb = std::make_unique<std::filebuf>();
-        fb->open(m_sys_path, mode);
-        if(!fb->is_open())
-            throw virtual_file_system::error(stdfs_err_msg("failed to open ", m_sys_path));
-
-        return fb;
-    }
-
     std::unique_ptr<file_handle> sys_file::get_fh(
         file_flag flags, bool convert_crlf
     )
     {
-        // TODO: Optimize
-        return std::make_unique<fh_const_bytes<std::string>>(read_string(convert_crlf));
+        (void)flags;
+        (void)convert_crlf;
+        return std::make_unique<fh_posix_file>(m_sys_path);
     }
 
     std::string sys_file::read_string(bool convert_crlf) const
@@ -125,13 +91,6 @@ namespace file_data
         return *this;
     }
 
-    std::unique_ptr<std::streambuf> archive_entry::open(
-        std::ios_base::openmode mode
-    ) const
-    {
-        return m_archive_ref->getbuf(m_offset, mode);
-    }
-
     std::unique_ptr<file_handle> archive_entry::get_fh(
         file_flag flags, bool convert_crlf
     )
@@ -166,21 +125,6 @@ namespace detail
                 return v.file_size();
             },
             m_data
-        );
-    }
-
-    std::unique_ptr<std::streambuf> file_node::getbuf(
-        std::ios_base::openmode mode
-    ) const
-    {
-        return visit(
-            [mode]<typename T>(const T& v) -> std::unique_ptr<std::streambuf>
-            {
-                constexpr bool has_buf = requires() { v.open(mode); };
-                if constexpr(has_buf)
-                    return v.open(mode);
-                throw virtual_file_system::error("bad file");
-            }
         );
     }
 

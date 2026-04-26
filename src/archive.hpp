@@ -25,10 +25,6 @@ protected:
 public:
     virtual ~archive();
 
-    std::unique_ptr<std::streambuf> getbuf(
-        std::int64_t offset, std::ios_base::openmode mode
-    ) const;
-
     virtual std::string read_string(std::int64_t offset) const = 0;
     virtual std::vector<std::byte> read_bytes(std::int64_t offset) const = 0;
 

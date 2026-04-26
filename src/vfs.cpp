@@ -1,7 +1,6 @@
 #include <lochfolk/vfs.hpp>
 #include <memory>
 #include <cassert>
-#include <lochfolk/utility.hpp>
 #include "errmsg.hpp"
 #include "file_node.hpp"
 
@@ -214,17 +213,24 @@ std::unique_ptr<file_handle> virtual_file_system::fopen(
     bool convert_crlf
 )
 {
-    return nullptr;
+    const auto* f = find_impl(m_vfs_data->root, p);
+    if(!f)
+        throw error(vfs_err_msg(p, " is not found"));
+    if(f->is_directory())
+        throw error(vfs_err_msg(p, " is a directory"));
+    return f->get_fh(flags, convert_crlf);
 }
 
 ivfstream virtual_file_system::open(path_view p, std::ios_base::openmode mode)
 {
+    (void)mode;
     const auto* f = find_impl(m_vfs_data->root, p);
     if(!f)
         throw error(vfs_err_msg(p, " is not found"));
+    if(f->is_directory())
+        throw error(vfs_err_msg(p, " is a directory"));
 
-    mode |= std::ios_base::in;
-    return ivfstream(f->getbuf(mode));
+    return ivfstream(f->get_fh(file_flag::readable, false));
 }
 
 std::string virtual_file_system::read_string(path_view p, bool convert_crlf)

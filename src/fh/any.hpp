@@ -80,6 +80,7 @@ public:
         std::copy_n(
             m_cursor, size, buf.begin()
         );
+        m_cursor += size;
         return io_result(size);
     }
 
@@ -166,6 +167,7 @@ public:
         std::copy_n(
             m_cursor, size, buf.begin()
         );
+        m_cursor += size;
         return io_result(size);
     }
 

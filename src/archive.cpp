@@ -2,7 +2,6 @@
 #include <cassert>
 #include <span>
 #include <filesystem>
-#include <sstream>
 #include <minizip/mz.h>
 #include <minizip/mz_zip.h>
 #include <minizip/mz_strm_os.h>
@@ -14,16 +13,6 @@ namespace lochfolk
 archive::archive() = default;
 
 archive::~archive() = default;
-
-std::unique_ptr<std::streambuf> archive::getbuf(
-    std::int64_t offset, std::ios_base::openmode mode
-) const
-{
-    mode &= ~std::ios_base::out;
-    return std::make_unique<std::stringbuf>(
-        read_string(offset), mode
-    );
-}
 
 namespace detail
 {

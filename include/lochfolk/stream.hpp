@@ -6,6 +6,7 @@
 #include <memory>
 #include <iostream>
 #include "detail/config.hpp"
+#include "io.hpp"
 
 namespace lochfolk
 {
@@ -19,6 +20,8 @@ public:
     LOCHFOLK_API ivfstream(ivfstream&& other) noexcept;
 
     LOCHFOLK_API ivfstream(std::unique_ptr<std::streambuf> buf);
+
+    LOCHFOLK_API ivfstream(std::unique_ptr<file_handle> fh);
 
     LOCHFOLK_API ~ivfstream();
 
