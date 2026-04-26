@@ -10,7 +10,7 @@ target("lochfolk")
     add_includedirs("include", { public = true })
     add_headerfiles("include/(**.hpp)", { prefix = "include" })
     add_packages("minizip-ng")
-    add_files("src/*.cpp")
+    add_files("src/**.cpp")
     if is_kind("shared") then
         add_defines("LOCHFOLK_SHARED", { public = true })
     end

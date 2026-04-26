@@ -71,10 +71,10 @@ public:
 
     io_result read(std::span<std::byte> buf, std::uint64_t size) override
     {
-        size = std::min(buf.size_bytes(), size);
+        size = std::min(buf.size_bytes(), static_cast<std::size_t>(size));
 
         size = std::min(
-            m_buf.size() - (m_cursor - m_buf.data()), size
+            m_buf.size() - (m_cursor - m_buf.data()), static_cast<std::size_t>(size)
         );
 
         std::copy_n(
@@ -160,7 +160,7 @@ public:
 
     io_result read(std::span<std::byte> buf, std::uint64_t size) override
     {
-        size = std::min(buf.size_bytes(), size);
+        size = std::min(buf.size_bytes(), static_cast<std::size_t>(size));
         size = std::min(buf_size() - current_pos(), size);
 
         std::copy_n(

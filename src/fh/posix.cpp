@@ -5,6 +5,7 @@
 namespace lochfolk
 {
 fh_posix_file::fh_posix_file(const std::filesystem::path& p)
+    : m_fd(0)
 {
     this->open(p);
 }

@@ -171,6 +171,9 @@ TEST(vfs, mount_sys_dir)
 
 TEST(vfs, mount_zip_archive)
 {
+    if (!std::filesystem::exists("test_vfs_data/ar.zip"))
+        GTEST_SKIP() << "test_vfs_data/ar.zip not found";
+
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;

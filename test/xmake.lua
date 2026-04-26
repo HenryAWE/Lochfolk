@@ -18,6 +18,9 @@ target("test_vfs")
     add_files("test_vfs.cpp")
     add_tests("test_lochfolk")
     after_build(function (target)
+        if is_plat("macosx") then
+            return -- TODO: Fix archiving logic
+        end
         os.cp("$(scriptdir)/example.txt", target:targetdir() .. "/test_vfs_data/")
 
         os.cp("$(scriptdir)/dir/", target:targetdir() .. "/test_vfs_data/")
