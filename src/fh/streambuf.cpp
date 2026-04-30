@@ -1,5 +1,6 @@
 #include "streambuf.hpp"
 #include <algorithm>
+#include <limits>
 
 namespace lochfolk
 {
