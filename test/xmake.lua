@@ -18,20 +18,20 @@ target("test_vfs")
     add_files("test_vfs.cpp")
     add_tests("test_lochfolk")
     after_build(function (target)
-        if is_plat("macosx") then
-            return -- TODO: Fix archiving logic
-        end
+        import("lib.detect.find_tool")
+
         os.cp("$(scriptdir)/example.txt", target:targetdir() .. "/test_vfs_data/")
 
         os.cp("$(scriptdir)/dir/", target:targetdir() .. "/test_vfs_data/")
 
+        local script = path.absolute(os.scriptdir() .. "/script/make_archive.py")
+        local archive_dir = path.absolute(os.scriptdir() .. "/archive")
         local ar_name = path.absolute(target:targetdir() .. "/test_vfs_data/ar.zip")
-        import("utils.archive")
-        local options = {}
-        options.recurse = true
-        options.compress = "default"
 
-        local old_dir = os.cd("$(scriptdir)/archive")
-        archive.archive(ar_name, ".", options)
-        os.cd(old_dir)
+        local python = find_tool("python3", {version = true})
+        if not python then
+            raise("python3 not found, please install Python 3 and ensure it is in PATH")
+        end
+
+        os.execv(python.program, { script, ar_name, archive_dir })
     end)
