@@ -16,10 +16,9 @@ namespace lochfolk
  * The stream is a thin adapter: reads always go through a `file_handle`,
  * never through `std::filebuf` or `std::stringbuf`.
  *
- * `virtual_file_system::open` opens the file for binary reading, so line
- * endings are not translated. Use `virtual_file_system::fopen` with
- * `convert_crlf = true`, or `virtual_file_system::read_string`, when CRLF
- * conversion is wanted.
+ * `virtual_file_system::open` uses text mode by default: CRLF is translated
+ * to LF on every platform. Pass `std::ios_base::binary` when the raw bytes are
+ * needed.
  *
  * Read errors are reported as `badbit`; end of file is reported as `eofbit`.
  */
@@ -34,7 +33,15 @@ public:
 
     LOCHFOLK_API ivfstream(std::unique_ptr<std::streambuf> buf);
 
-    LOCHFOLK_API ivfstream(std::unique_ptr<file_handle> fh);
+    /**
+     * @brief Reads from a file handle
+     *
+     * @param fh Handle to read from
+     * @param convert_crlf Translate CRLF to LF while reading
+     */
+    LOCHFOLK_API ivfstream(
+        std::unique_ptr<file_handle> fh, bool convert_crlf = false
+    );
 
     LOCHFOLK_API ~ivfstream();
 

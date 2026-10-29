@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <streambuf>
+#include <vector>
 #include <lochfolk/io.hpp>
 
 namespace lochfolk
@@ -18,15 +19,25 @@ namespace lochfolk
  * through `file_handle::read` and never uses `std::filebuf`, `std::stringbuf`
  * or any other CRT/standard library file object.
  *
- * Reads are buffered, putback works inside the current buffer (at least one
- * character after `underflow` returned it), and positions follow the raw
- * offsets of the underlying handle. Read errors are reported by throwing
- * `std::ios_base::failure`, which `std::istream` reports as `badbit`.
+ * Reads are buffered and putback works inside the current buffer. File
+ * positions are always raw byte offsets of the underlying handle, which
+ * matches what a text mode file stream reports: with CRLF translation enabled
+ * a CRLF pair counts as two raw bytes but produces a single character, so
+ * `tellg()` may advance by two for one character.
+ *
+ * Read errors are reported by throwing `std::ios_base::failure`, which
+ * `std::istream` reports as `badbit`.
  */
 class fh_streambuf final : public std::streambuf
 {
 public:
-    explicit fh_streambuf(std::unique_ptr<file_handle> fh);
+    /**
+     * @param fh Handle to read from
+     * @param convert_crlf Translate CRLF to LF while reading
+     */
+    explicit fh_streambuf(
+        std::unique_ptr<file_handle> fh, bool convert_crlf = false
+    );
 
     ~fh_streambuf() override = default;
 
@@ -56,10 +67,10 @@ protected:
 
 private:
     /**
-     * @brief Reads the next chunk from the handle into the buffer
+     * @brief Reads and translates the next chunk into the buffer
      *
      * Only called when the buffer is exhausted. Precondition: the handle is
-     * positioned at @ref m_fill_end.
+     * positioned at @ref m_raw_read_pos.
      *
      * @return `false` on end of file
      * @throw std::ios_base::failure if the underlying read failed
@@ -67,7 +78,7 @@ private:
     bool fill();
 
     /**
-     * @brief Offset of the character at `gptr()`
+     * @brief Raw offset of the character at `gptr()`
      */
     [[nodiscard]]
     std::uint64_t logical_pos() const;
@@ -75,7 +86,20 @@ private:
     static constexpr std::size_t buf_size = 8192;
 
     std::unique_ptr<file_handle> m_fh;
-    std::uint64_t m_fill_end = 0; //< Offset of `egptr()`
+    bool m_convert = false;
+
+    std::uint64_t m_raw_read_pos = 0; //< Raw offset of the next read
+    std::uint64_t m_raw_begin = 0;    //< Raw offset of the byte at `eback()`
+
+    /**
+     * @brief Output indices of the LFs that replaced a CRLF pair
+     *
+     * Position `i` of the buffer corresponds to raw offset
+     * `m_raw_begin + i + (number of entries smaller than i)`.
+     */
+    std::vector<std::size_t> m_pairs;
+
+    bool m_pending_cr = false;
     bool m_eof = false;
     char_type m_buf[buf_size];
 };

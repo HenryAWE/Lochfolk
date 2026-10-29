@@ -755,6 +755,98 @@ TEST(vfs, access_context_archive)
     EXPECT_FALSE(ctx.exists("data/value.txt"_pv));
 }
 
+TEST(vfs, stream_text_mode)
+{
+    using namespace lochfolk::vfs_literals;
+
+    lochfolk::virtual_file_system vfs;
+
+    // Three lines: nine raw bytes, six characters after translation
+    vfs.mount_string("/t.txt"_pv, "a\r\nb\r\nc\r\n");
+
+    // Text mode is the default
+    {
+        auto vfss = vfs.open("/t.txt"_pv);
+        std::istreambuf_iterator<char> first(vfss);
+        std::istreambuf_iterator<char> last;
+        EXPECT_EQ(std::string(first, last), "a\nb\nc\n");
+    }
+
+    // tellg/seekg use raw byte offsets
+    {
+        auto vfss = vfs.open("/t.txt"_pv);
+        EXPECT_EQ(vfss.tellg(), std::streampos(0));
+
+        char c = 0;
+        vfss.get(c);
+        EXPECT_EQ(c, 'a');
+        EXPECT_EQ(vfss.tellg(), std::streampos(1));
+
+        vfss.get(c); // consumes the CRLF pair
+        EXPECT_EQ(c, '\n');
+        EXPECT_EQ(vfss.tellg(), std::streampos(3));
+
+        const std::streampos pos = vfss.tellg();
+        vfss.get(c);
+        EXPECT_EQ(c, 'b');
+
+        // Seeking to a position returned by tellg() continues correctly
+        vfss.clear();
+        vfss.seekg(pos);
+        vfss.get(c);
+        EXPECT_EQ(c, 'b');
+
+        // Rewind
+        vfss.clear();
+        vfss.seekg(0);
+        std::istreambuf_iterator<char> first(vfss);
+        std::istreambuf_iterator<char> last;
+        EXPECT_EQ(std::string(first, last), "a\nb\nc\n");
+
+        vfss.clear();
+        vfss.seekg(0, std::ios_base::end);
+        EXPECT_EQ(vfss.tellg(), std::streampos(9));
+        EXPECT_EQ(vfss.peek(), std::char_traits<char>::eof());
+    }
+
+    // A CRLF pair split across the internal buffer boundary
+    {
+        std::string content(8191, 'x');
+        content += "\r\n";
+        content += "tail";
+        vfs.mount_string("/edge.txt"_pv, content);
+
+        std::string expected(8191, 'x');
+        expected += "\ntail";
+
+        auto vfss = vfs.open("/edge.txt"_pv);
+        std::istreambuf_iterator<char> first(vfss);
+        std::istreambuf_iterator<char> last;
+        EXPECT_EQ(std::string(first, last), expected);
+    }
+
+    // A chunk holding only a CR does not look like end of file
+    {
+        std::string content(8192, 'x');
+        content += "\r";
+        vfs.mount_string("/tail_cr.txt"_pv, content);
+
+        auto vfss = vfs.open("/tail_cr.txt"_pv);
+        std::istreambuf_iterator<char> first(vfss);
+        std::istreambuf_iterator<char> last;
+        EXPECT_EQ(std::string(first, last), content);
+    }
+
+    // A lone CR is preserved
+    {
+        vfs.mount_string("/lone.txt"_pv, "abc\r");
+        auto vfss = vfs.open("/lone.txt"_pv);
+        std::istreambuf_iterator<char> first(vfss);
+        std::istreambuf_iterator<char> last;
+        EXPECT_EQ(std::string(first, last), "abc\r");
+    }
+}
+
 TEST(vfs, stream_read_error)
 {
     lochfolk::ivfstream vfss(std::make_unique<failing_handle>());
@@ -781,9 +873,20 @@ TEST(vfs, stream_adapter)
     vfs.mount_string("/empty.txt"_pv, "");
     vfs.mount_string("/crlf.txt"_pv, "a\r\nb\r\n");
 
-    // Streams read through the handle layer, without line ending translation
+    // Streams default to text mode (CRLF -> LF on every platform)
     {
         auto vfss = vfs.open("/crlf.txt"_pv);
+        std::istreambuf_iterator<char> first(vfss);
+        std::istreambuf_iterator<char> last;
+        std::string str(first, last);
+        EXPECT_EQ(str, "a\nb\n");
+    }
+
+    // ... and binary mode keeps the raw bytes
+    {
+        auto vfss = vfs.open(
+            "/crlf.txt"_pv, std::ios_base::in | std::ios_base::binary
+        );
         std::istreambuf_iterator<char> first(vfss);
         std::istreambuf_iterator<char> last;
         std::string str(first, last);

@@ -110,14 +110,15 @@ public:
      * The stream reads through a `file_handle`; no `std::filebuf` or
      * `std::stringbuf` is involved.
      *
-     * The file is always opened for binary reading, so line endings are not
-     * translated. Use `fopen(p, file_flag::readable, true)` or `read_string`
-     * when CRLF conversion is wanted.
+     * Text mode is the default (as for `std::ifstream`): CRLF is translated
+     * to LF, identically on every platform. Pass `std::ios_base::binary` to
+     * read the raw bytes. `tellg()` and `seekg()` always use the raw byte
+     * offsets of the underlying file, so a CRLF pair advances the position by
+     * two.
      *
      * @param p Path
-     * @param mode Accepted for compatibility: `std::ios_base::in` and
-     * `std::ios_base::binary` are supported, requesting `out`/`app`/`trunc`
-     * throws `std::invalid_argument`
+     * @param mode `in` (text, the default) or `in|binary`; requesting
+     * `out`/`app`/`trunc` throws `std::invalid_argument`
      *
      * @throw virtual_file_system::error if the path does not exist or is a
      * directory
@@ -125,7 +126,7 @@ public:
      * @throw std::system_error if a host file cannot be opened
      */
     LOCHFOLK_API ivfstream open(
-        path_view p, std::ios_base::openmode mode = std::ios_base::binary
+        path_view p, std::ios_base::openmode mode = std::ios_base::in
     );
 
     /**
@@ -208,7 +209,7 @@ public:
 
     [[nodiscard]]
     ivfstream open(
-        path_view p, std::ios_base::openmode mode = std::ios_base::binary
+        path_view p, std::ios_base::openmode mode = std::ios_base::in
     ) const
     {
         return m_vfs->open(to_fullpath(p), mode);

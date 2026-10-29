@@ -96,9 +96,11 @@ assert(!vfs.is_directory("/data/text/example.txt"_pv));
 
 `virtual_file_system::open()` returns an `ivfstream`, an input stream over a
 `file_handle`. It supports the usual `operator>>`, `getline`, `read`, `seekg`
-and `tellg`. The stream is always opened for binary reading, so line endings
-are not translated; use `read_string()` or `fopen(..., true)` for CRLF
-conversion.
+and `tellg`.
+
+Text mode is the default, as for `std::ifstream`: CRLF is translated to LF, and
+the translation is the same on every platform. Pass `std::ios_base::binary`
+to read the raw bytes:
 
 ```c++
 auto vfss = vfs.open("/data/example.txt"_pv);
@@ -108,7 +110,14 @@ std::getline(vfss, line);
 
 vfss.seekg(0);
 vfss.read(buf, sizeof buf);
+
+// Raw bytes, no translation
+auto bin = vfs.open("/data/example.txt"_pv, std::ios_base::in | std::ios_base::binary);
 ```
+
+`tellg()`/`seekg()` always use the raw byte offsets of the underlying file, so
+with CRLF translation a pair advances the position by two. `seekg(0)` and
+`seekg(pos)` where `pos` came from `tellg()` behave as expected.
 
 For random access, or to write to host files, use `fopen()`, which returns a
 `std::unique_ptr<lochfolk::file_handle>`:
