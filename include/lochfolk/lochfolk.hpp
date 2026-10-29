@@ -8,8 +8,8 @@
 // IWYU pragma: begin_exports
 
 #include "detail/config.hpp"
+#include "stream.hpp"
 #include "path.hpp"
-#include "io.hpp"
 #include "vfs.hpp"
 
 // IWYU pragma: end_exports

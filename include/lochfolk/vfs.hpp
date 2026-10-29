@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <ios>
 #include <iosfwd>
 #include <memory>
 #include <stdexcept>
@@ -11,6 +12,7 @@
 #include <filesystem>
 #include "detail/config.hpp"
 #include "path.hpp"
+#include "stream.hpp"
 #include "io.hpp"
 
 namespace lochfolk
@@ -103,6 +105,30 @@ public:
     );
 
     /**
+     * @brief Open a virtual file as an input stream
+     *
+     * The stream reads through a `file_handle`; no `std::filebuf` or
+     * `std::stringbuf` is involved.
+     *
+     * The file is always opened for binary reading, so line endings are not
+     * translated. Use `fopen(p, file_flag::readable, true)` or `read_string`
+     * when CRLF conversion is wanted.
+     *
+     * @param p Path
+     * @param mode Accepted for compatibility: `std::ios_base::in` and
+     * `std::ios_base::binary` are supported, requesting `out`/`app`/`trunc`
+     * throws `std::invalid_argument`
+     *
+     * @throw virtual_file_system::error if the path does not exist or is a
+     * directory
+     * @throw std::invalid_argument if a write mode is requested
+     * @throw std::system_error if a host file cannot be opened
+     */
+    LOCHFOLK_API ivfstream open(
+        path_view p, std::ios_base::openmode mode = std::ios_base::binary
+    );
+
+    /**
      * @brief Read a whole virtual file into a string
      *
      * @param p Path
@@ -178,6 +204,14 @@ public:
     ) const
     {
         return m_vfs->fopen(to_fullpath(p), flags, convert_crlf);
+    }
+
+    [[nodiscard]]
+    ivfstream open(
+        path_view p, std::ios_base::openmode mode = std::ios_base::binary
+    ) const
+    {
+        return m_vfs->open(to_fullpath(p), mode);
     }
 
     [[nodiscard]]
