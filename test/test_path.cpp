@@ -166,6 +166,25 @@ TEST(path, parent_path)
         p = p.parent_path();
         EXPECT_EQ(p.string(), "data");
     }
+
+    // Trailing separators should not become part of the parent path.
+    {
+        lochfolk::path p = "data/";
+        p = p.parent_path();
+        EXPECT_EQ(p.string(), "data");
+    }
+
+    {
+        lochfolk::path p = "data///";
+        p = p.parent_path();
+        EXPECT_EQ(p.string(), "data");
+    }
+
+    {
+        lochfolk::path p = "/data///";
+        p = p.parent_path();
+        EXPECT_EQ(p.string(), "/");
+    }
 }
 
 TEST(path, filename)
@@ -208,6 +227,20 @@ TEST(path, iterator_forward)
             result.push_back(i.string());
         return result;
     };
+
+    {
+        lochfolk::path_view p = ""_pv;
+
+        EXPECT_TRUE(p.begin() == p.end());
+        EXPECT_TRUE(to_strs(p).empty());
+    }
+
+    {
+        lochfolk::path_view p;
+
+        EXPECT_TRUE(p.begin() == p.end());
+        EXPECT_TRUE(to_strs(p).empty());
+    }
 
     {
         lochfolk::path_view p = "/data/text/example.txt"_pv;

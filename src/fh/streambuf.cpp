@@ -1,5 +1,6 @@
 #include "streambuf.hpp"
 #include <algorithm>
+#include <cstring>
 #include <limits>
 
 namespace lochfolk
@@ -15,6 +16,16 @@ fh_streambuf::int_type fh_streambuf::underflow()
     if(gptr() < egptr())
         return traits_type::to_int_type(*gptr());
 
+    // Preserve the tail of the current buffer so that std::streambuf can
+    // still put characters back after a refill.
+    std::size_t keep = 0;
+    if(gptr() > eback())
+    {
+        std::size_t available = static_cast<std::size_t>(gptr() - eback());
+        keep = std::min(available, putback_size);
+        std::memmove(m_buf + (putback_size - keep), gptr() - keep, keep);
+    }
+
     auto result = m_fh->read(
         std::span(reinterpret_cast<std::byte*>(m_buf + putback_size), buf_size),
         buf_size
@@ -28,7 +39,7 @@ fh_streambuf::int_type fh_streambuf::underflow()
 
     m_pos += static_cast<std::uint64_t>(nread);
     setg(
-        m_buf,
+        m_buf + (putback_size - keep),
         m_buf + putback_size,
         m_buf + putback_size + nread
     );

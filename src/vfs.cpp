@@ -100,6 +100,8 @@ void virtual_file_system::mount_dir(
     }
 
     path base(p);
+    mkdir_impl(m_vfs_data->root, base);
+
     for(auto& i : stdfs::recursive_directory_iterator(dir))
     {
         if(stdfs::is_directory(i))
@@ -125,6 +127,7 @@ void virtual_file_system::mount_archive(
     ar->open(sys_path);
 
     path base(p);
+    mkdir_impl(m_vfs_data->root, base);
 
     if(!ar->goto_first())
         return; // Empty archive
@@ -183,13 +186,13 @@ bool virtual_file_system::remove(path_view p)
     }
 
     auto* parent = find_impl(m_vfs_data->root, p.parent_path());
-    if(!parent->is_directory())
+    if(!parent || !parent->is_directory())
         return false;
 
     std::string_view target_sv = [](path_view pv)
     {
         std::string_view result(pv);
-        if(result.back() == path_view::separator)
+        while(!result.empty() && result.back() == path_view::separator)
             result.remove_suffix(1);
 
         std::size_t pos = result.rfind(path_view::separator);

@@ -214,6 +214,43 @@ TEST(vfs, mount_zip_archive)
     EXPECT_FALSE(vfs.exists("/archive/data/value.txt"_pv));
 }
 
+TEST(vfs, remove_missing)
+{
+    using namespace lochfolk::vfs_literals;
+
+    lochfolk::virtual_file_system vfs;
+    vfs.mount_string("/data/file.txt"_pv, "content");
+
+    EXPECT_FALSE(vfs.remove("/missing/file.txt"_pv));
+    EXPECT_FALSE(vfs.remove("/data/missing.txt"_pv));
+    EXPECT_FALSE(vfs.remove("/data/file.txt/child"_pv));
+    EXPECT_TRUE(vfs.exists("/data/file.txt"_pv));
+
+    EXPECT_TRUE(vfs.remove("/data/file.txt//"_pv));
+    EXPECT_FALSE(vfs.exists("/data/file.txt"_pv));
+}
+
+TEST(vfs, mount_empty_dir)
+{
+    namespace stdfs = std::filesystem;
+    using namespace lochfolk::vfs_literals;
+
+    stdfs::path empty_dir = "test_vfs_data/empty_dir_for_mount_test";
+    std::error_code ec;
+    stdfs::remove_all(empty_dir, ec);
+    ASSERT_TRUE(stdfs::create_directories(empty_dir));
+
+    {
+        lochfolk::virtual_file_system vfs;
+        vfs.mount_dir("/empty"_pv, empty_dir);
+
+        EXPECT_TRUE(vfs.exists("/empty"_pv));
+        EXPECT_TRUE(vfs.is_directory("/empty"_pv));
+    }
+
+    stdfs::remove_all(empty_dir, ec);
+}
+
 TEST(vfs, access_context)
 {
     using namespace lochfolk::vfs_literals;
