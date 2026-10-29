@@ -11,22 +11,18 @@ lochfolk::virtual_file_system vfs;
 
 vfs.mount_archive("/archive"_pv, "system/path/to/archive.zip");
 
+// Read a whole file as text (CRLF is converted to LF by default)
+assert(vfs.read_string("/archive/info.txt"_pv) == "archive\n");
+
+// Read bytes through a file handle
 {
-    auto vfss = vfs.open("/archive/info.txt"_pv);
+    auto fh = vfs.fopen("/archive/data/value.txt"_pv);
 
-    std::string str;
-    vfss >> str;
+    std::byte buf[32];
+    const lochfolk::io_result n = fh->read(buf);
 
-    assert(str == "archive");
-}
-
-{
-    auto vfss = vfs.open("/archive/data/value.txt"_pv);
-
-    int v1 = 0, v2 = 0;
-    vfss >> v1 >> v2;
-    assert(v1 == 123);
-    assert(v2 == 456);
+    assert(!n.is_npos());
+    assert(n.bytes_transferred() == 14);
 }
 ```
 
@@ -43,30 +39,15 @@ vfs.list_files(std::cerr);
 
 assert(vfs.is_directory("/data/nested"_pv));
 
-{
-    auto vfss = vfs.open("/data/a.txt"_pv);
-
-    std::string str;
-    vfss >> str;
-
-    assert(str == "AAA");
-}
+assert(vfs.read_string("/data/a.txt"_pv) == "AAA\n");
+assert(vfs.read_string("/data/nested/b.txt"_pv) == "BBB\n");
 
 {
-    auto vfss = vfs.open("/data/nested/b.txt"_pv);
+    auto fh = vfs.fopen("/data/example.txt"_pv);
 
-    std::string str;
-    vfss >> str;
-
-    assert(str == "BBB");
-}
-
-{
-    auto vfss = vfs.open("/data/example.txt"_pv);
-
-    int v = 0;
-    vfss >> v;
-    assert(v == 1013);
+    std::byte buf[4];
+    fh->read(buf);
+    assert(std::string(reinterpret_cast<const char*>(buf), 4) == "1013");
 }
 ```
 
@@ -83,14 +64,49 @@ assert(vfs.exists("/data/text/example.txt"_pv));
 assert(!vfs.is_directory("/data/text/example.txt"_pv));
 
 {
-    auto vfss = vfs.open("/data/text/example.txt"_pv);
+    auto fh = vfs.fopen("/data/text/example.txt"_pv);
 
-    int v1 = 0, v2 = 0;
-    vfss >> v1 >> v2;
-    assert(v1 == 123);
-    assert(v2 == 456);
+    assert(fh->readable());
+    assert(!fh->writable());
+    assert(fh->file_size() == 7);
 }
 ```
+
+## File Handles
+
+`virtual_file_system::fopen` returns a `std::unique_ptr<lochfolk::file_handle>`
+and is the only way to read or write file contents. A handle is independent of
+the file system it came from: it stays usable after the virtual file system is
+modified or destroyed.
+
+```c++
+auto fh = vfs.fopen(
+    "/data/example.txt"_pv,
+    lochfolk::file_flag::read_write, // readable | writable
+    true                             // convert CRLF to LF while reading
+);
+
+std::byte buf[64];
+const lochfolk::io_result n = fh->read(buf); // 0 == EOF, npos == error
+
+fh->seek(0, lochfolk::whence::begin);
+fh->seek(-4, lochfolk::whence::end);
+```
+
+- `file_flag::readable`, `file_flag::writable` and `read_write` can be combined
+  with `operator|`.
+- **Writing is only supported for files mounted from the host file system.**
+  String constants and archive entries are always read-only; asking for
+  `file_flag::writable` yields a read-only handle (check
+  `file_handle::writable()` or the result of `file_handle::write()`).
+- `convert_crlf` translates CRLF to LF while reading, on every platform and for
+  every kind of entry. It affects reads only; `file_size()` still reports the
+  raw size.
+- `seek()` uses raw offsets, and `whence::begin/current/end` replace
+  `std::ios_base::seekdir`.
+- Errors are reported as `io_result::npos` from `read()`/`write()`, as
+  `virtual_file_system::error` for invalid virtual paths, and as
+  `std::system_error` when a host file cannot be opened.
 
 ## Acknowledgments
 This library uses the following third party libraries:

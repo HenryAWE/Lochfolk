@@ -3,12 +3,14 @@
 
 #pragma once
 
-#include <ios>
+#include <cstdint>
+#include <iosfwd>
+#include <memory>
 #include <stdexcept>
+#include <string>
 #include <filesystem>
 #include "detail/config.hpp"
 #include "path.hpp"
-#include "stream.hpp"
 #include "io.hpp"
 
 namespace lochfolk
@@ -73,21 +75,38 @@ public:
 
     LOCHFOLK_API bool remove(path_view p);
 
+    /**
+     * @brief Open a virtual file
+     *
+     * The returned handle is owned by the caller and stays usable after the
+     * virtual file system is modified or destroyed.
+     *
+     * `flags` selects the access modes. Only files mounted from the host
+     * file system can be opened for writing: string constants and archive
+     * entries are always read-only, so a request for `file_flag::writable`
+     * is silently reduced to `file_flag::readable` for them (check
+     * `file_handle::writable()` or the result of `file_handle::write()`).
+     *
+     * If @p convert_crlf is `true`, CRLF sequences are translated to LF
+     * while reading. The conversion is applied to every kind of entry and
+     * is independent of the host platform.
+     *
+     * @throw virtual_file_system::error if the path does not exist or is a
+     * directory
+     * @throw std::invalid_argument if no access mode is requested
+     * @throw std::system_error if a host file cannot be opened
+     */
     LOCHFOLK_API std::unique_ptr<file_handle> fopen(
         path_view p,
         file_flag flags = file_flag::readable,
         bool convert_crlf = false
     );
 
-    LOCHFOLK_API ivfstream open(
-        path_view p, std::ios_base::openmode mode = std::ios_base::binary
-    );
-
     /**
-     * @brief Read string from virtual file
+     * @brief Read a whole virtual file into a string
      *
      * @param p Path
-     * @param convert_crlf Convert CRLF to LF for system files on Windows
+     * @param convert_crlf Convert CRLF to LF while reading
      */
     [[nodiscard]]
     LOCHFOLK_API std::string read_string(path_view p, bool convert_crlf = true);
@@ -152,11 +171,13 @@ public:
     }
 
     [[nodiscard]]
-    ivfstream open(
-        path_view p, std::ios_base::openmode mode = std::ios_base::binary
+    std::unique_ptr<file_handle> fopen(
+        path_view p,
+        file_flag flags = file_flag::readable,
+        bool convert_crlf = false
     ) const
     {
-        return m_vfs->open(to_fullpath(p), mode);
+        return m_vfs->fopen(to_fullpath(p), flags, convert_crlf);
     }
 
     [[nodiscard]]

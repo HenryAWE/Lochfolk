@@ -6,7 +6,7 @@
 #include <minizip/mz_zip.h>
 #include <minizip/mz_strm_os.h>
 #include <lochfolk/io.hpp>
-#include "fh/any.hpp"
+#include "fh/bytes.hpp"
 
 namespace lochfolk
 {
@@ -81,24 +81,6 @@ zip_archive::~zip_archive()
     close();
     m_handle.reset();
     m_stream.reset();
-}
-
-std::string zip_archive::read_string(std::int64_t offset) const
-{
-    std::string result;
-
-    goto_entry(offset);
-    auto entry = open_current();
-
-    std::size_t sz = entry.file_size();
-    result.resize(sz);
-    sz = entry.read(
-        std::span(reinterpret_cast<std::byte*>(result.data()), result.size())
-    );
-    if(sz != result.size()) [[unlikely]]
-        result.resize(sz);
-
-    return result;
 }
 
 std::vector<std::byte> zip_archive::read_bytes(std::int64_t offset) const
@@ -183,9 +165,11 @@ std::int64_t zip_archive::current_offset() const
     return mz_zip_get_entry(m_handle.get());
 }
 
-std::unique_ptr<file_handle> zip_archive::get_fh_of(std::int64_t offset, file_flag flags, bool convert_crlf)
+std::unique_ptr<file_handle> zip_archive::get_fh_of(std::int64_t offset) const
 {
-    return make_unique_const_bytes(read_bytes(offset));
+    // Snapshot the entry so that the handle is independent of the archive's
+    // current entry cursor.
+    return make_fh_bytes(read_bytes(offset));
 }
 
 void zip_archive::open_entry() const

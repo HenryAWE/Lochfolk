@@ -1,8 +1,11 @@
 #include <lochfolk/vfs.hpp>
-#include <memory>
+#include <array>
 #include <cassert>
+#include <memory>
+#include <span>
 #include "errmsg.hpp"
 #include "file_node.hpp"
+#include "fh/crlf.hpp"
 
 namespace lochfolk
 {
@@ -216,33 +219,51 @@ std::unique_ptr<file_handle> virtual_file_system::fopen(
     bool convert_crlf
 )
 {
-    const auto* f = find_impl(m_vfs_data->root, p);
-    if(!f)
-        throw error(vfs_err_msg(p, " is not found"));
-    if(f->is_directory())
-        throw error(vfs_err_msg(p, " is a directory"));
-    return f->get_fh(flags, convert_crlf);
-}
+    if(flags == file_flag::unknown) [[unlikely]]
+        throw std::invalid_argument(
+            "lochfolk: fopen() requires file_flag::readable or "
+            "file_flag::writable"
+        );
 
-ivfstream virtual_file_system::open(path_view p, std::ios_base::openmode mode)
-{
-    (void)mode;
     const auto* f = find_impl(m_vfs_data->root, p);
     if(!f)
         throw error(vfs_err_msg(p, " is not found"));
     if(f->is_directory())
         throw error(vfs_err_msg(p, " is a directory"));
 
-    return ivfstream(f->get_fh(file_flag::readable, false));
+    std::unique_ptr<file_handle> fh = f->get_fh(flags);
+    if(convert_crlf && fh->readable())
+        fh = std::make_unique<fh_crlf>(std::move(fh));
+
+    return fh;
 }
 
 std::string virtual_file_system::read_string(path_view p, bool convert_crlf)
 {
-    const auto* f = find_impl(m_vfs_data->root, p);
-    if(!f)
-        throw error(vfs_err_msg(p, " is not found"));
+    std::unique_ptr<file_handle> fh = fopen(
+        p, file_flag::readable, convert_crlf
+    );
 
-    return f->read_string(convert_crlf);
+    std::string result;
+    result.reserve(static_cast<std::size_t>(fh->file_size()));
+
+    std::array<std::byte, 4096> buf;
+    for(;;)
+    {
+        const io_result n = fh->read(std::span(buf));
+        if(n.is_npos())
+            throw error(vfs_err_msg(p, " read failed"));
+
+        const auto size = static_cast<std::size_t>(n.bytes_transferred());
+        if(size == 0)
+            break;
+
+        result.append(
+            reinterpret_cast<const char*>(buf.data()), size
+        );
+    }
+
+    return result;
 }
 
 void virtual_file_system::list_files(std::ostream& os)

@@ -28,9 +28,9 @@ target("test_vfs")
         local archive_dir = path.absolute(os.scriptdir() .. "/archive")
         local ar_name = path.absolute(target:targetdir() .. "/test_vfs_data/ar.zip")
 
-        local python = find_tool("python3", {version = true})
+        local python = find_tool({"python3", "python"}, {version = true})
         if not python then
-            raise("python3 not found, please install Python 3 and ensure it is in PATH")
+            raise("Python 3 not found, please install it and ensure it is in PATH")
         end
 
         os.execv(python.program, { script, ar_name, archive_dir })
