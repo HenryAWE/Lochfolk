@@ -1,3 +1,6 @@
+example.txt eol=lf
+dir/a.txt eol=lf
+dir/nested/b.txt eol=lf
 archive/info.txt eol=lf
 archive/data/value.txt eol=lf
 archive/crlf.txt -text

@@ -132,7 +132,15 @@ io_result fh_crlf::read(std::span<std::byte> buf)
                 return io_result();
 
             if(m_begin == m_end)
-                break; // End of file
+            {
+                if(m_eof)
+                    break; // End of file
+
+                // The chunk held nothing but a CR that may start a CRLF
+                // pair in the next chunk; keep reading instead of
+                // reporting a premature end of file.
+                continue;
+            }
         }
 
         const auto count =

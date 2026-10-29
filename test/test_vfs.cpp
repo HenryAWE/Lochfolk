@@ -428,6 +428,14 @@ TEST(vfs, convert_crlf_edge_cases)
         EXPECT_EQ(vfs.read_string("/split.txt"_pv), content);
     }
 
+    // A chunk consisting only of a lone CR must not look like end of file
+    {
+        std::string content(4096, 'x');
+        content += "\r";
+        vfs.mount_string("/tail_cr.txt"_pv, content);
+        EXPECT_EQ(vfs.read_string("/tail_cr.txt"_pv), content);
+    }
+
     // Seeking rewinds the translation state
     {
         vfs.mount_string("/rewind.txt"_pv, "p\r\nq\r\n");
