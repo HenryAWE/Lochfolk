@@ -247,7 +247,8 @@ ivfstream virtual_file_system::open(
             "lochfolk: open() is read-only; use fopen() for writing"
         );
 
-    return ivfstream(fopen(p, file_flag::readable, false));
+    const bool convert_crlf = !(mode & std::ios_base::binary);
+    return ivfstream(fopen(p, file_flag::readable, false), convert_crlf);
 }
 
 std::string virtual_file_system::read_string(path_view p, bool convert_crlf)

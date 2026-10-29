@@ -11,9 +11,9 @@ ivfstream::ivfstream(std::unique_ptr<std::streambuf> buf)
     : my_base(buf.get()),
       m_buf(std::move(buf)) {}
 
-ivfstream::ivfstream(std::unique_ptr<file_handle> fh)
+ivfstream::ivfstream(std::unique_ptr<file_handle> fh, bool convert_crlf)
     : my_base(nullptr),
-      m_buf(std::make_unique<fh_streambuf>(std::move(fh)))
+      m_buf(std::make_unique<fh_streambuf>(std::move(fh), convert_crlf))
 {
     my_base::rdbuf(m_buf.get());
 }
