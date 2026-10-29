@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <filesystem>
+#include <lochfolk/io.hpp>
 
 namespace lochfolk
 {
@@ -24,14 +25,19 @@ protected:
 public:
     virtual ~archive();
 
-    std::unique_ptr<std::streambuf> getbuf(
-        std::int64_t offset, std::ios_base::openmode mode
-    ) const;
-
-    virtual std::string read_string(std::int64_t offset) const = 0;
     virtual std::vector<std::byte> read_bytes(std::int64_t offset) const = 0;
 
     virtual std::uint64_t get_file_size(
+        std::int64_t offset
+    ) const = 0;
+
+    /**
+     * @brief Creates a read-only handle holding the contents of an entry
+     *
+     * Archive entries are always read-only, regardless of the modes
+     * requested by the caller.
+     */
+    virtual std::unique_ptr<file_handle> get_fh_of(
         std::int64_t offset
     ) const = 0;
 };
@@ -67,7 +73,6 @@ public:
 
     ~zip_archive();
 
-    std::string read_string(std::int64_t offset) const override;
     std::vector<std::byte> read_bytes(std::int64_t offset) const override;
 
     std::uint64_t get_file_size(std::int64_t offset) const override;
@@ -157,6 +162,10 @@ public:
     {
         return current_entry(*this);
     }
+
+    std::unique_ptr<file_handle> get_fh_of(
+        std::int64_t offset
+    ) const override;
 
 private:
     void open_entry() const;

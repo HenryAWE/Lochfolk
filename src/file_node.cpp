@@ -1,42 +1,19 @@
 #include "file_node.hpp"
 #include <memory>
-#include <fstream>
-#include <sstream>
+#include <utility>
 #include <lochfolk/vfs.hpp>
-#include <lochfolk/utility.hpp>
 #include "errmsg.hpp"
+#include "fh/bytes.hpp"
+#include "fh/file.hpp"
 
 namespace lochfolk
 {
 namespace file_data
 {
-    std::unique_ptr<std::streambuf> string_constant::open(
-        std::ios_base::openmode mode
-    ) const
+    std::unique_ptr<file_handle> string_constant::get_fh(file_flag) const
     {
-        mode &= ~std::ios_base::out;
-
-        return std::visit(
-            [mode]<typename T>(const T& v) -> std::unique_ptr<std::streambuf>
-            {
-                if constexpr(std::same_as<std::remove_cvref_t<T>, std::string_view>)
-                {
-                    std::span<char> sp(const_cast<char*>(v.data()), v.size());
-                    return std::make_unique<span_buf>(sp, mode);
-                }
-                else // std::string
-                {
-                    return std::make_unique<std::stringbuf>(v, mode);
-                }
-            },
-            m_str_data
-        );
-    }
-
-    std::string string_constant::read_string(bool convert_crlf) const
-    {
-        (void)convert_crlf;
-        return std::string(view());
+        // Copy the contents so that the handle does not alias the node.
+        return make_fh_bytes(std::string(view()));
     }
 
     std::uint64_t string_constant::file_size() const
@@ -57,31 +34,10 @@ namespace file_data
         );
     }
 
-    std::unique_ptr<std::filebuf> sys_file::open(
-        std::ios_base::openmode mode
-    ) const
+    std::unique_ptr<file_handle> sys_file::get_fh(file_flag flags) const
     {
-        std::unique_ptr fb = std::make_unique<std::filebuf>();
-        fb->open(m_sys_path, mode);
-        if(!fb->is_open())
-            throw virtual_file_system::error(stdfs_err_msg("failed to open ", m_sys_path));
-
-        return fb;
-    }
-
-    std::string sys_file::read_string(bool convert_crlf) const
-    {
-        std::ios_base::openmode mode = std::ios_base::in;
-        if(!convert_crlf)
-            mode |= std::ios_base::binary;
-
-        std::ifstream ifs(m_sys_path, mode);
-        if(!ifs.is_open()) [[unlikely]]
-            throw virtual_file_system::error(stdfs_err_msg("failed to open ", m_sys_path));
-
-        std::stringstream ss;
-        ss << ifs.rdbuf();
-        return std::move(ss).str();
+        // Throws std::system_error if the file cannot be opened.
+        return std::make_unique<fh_file>(m_sys_path, flags);
     }
 
     std::uint64_t sys_file::file_size() const
@@ -108,17 +64,9 @@ namespace file_data
         return *this;
     }
 
-    std::unique_ptr<std::streambuf> archive_entry::open(
-        std::ios_base::openmode mode
-    ) const
+    std::unique_ptr<file_handle> archive_entry::get_fh(file_flag) const
     {
-        return m_archive_ref->getbuf(m_offset, mode);
-    }
-
-    std::string archive_entry::read_string(bool convert_crlf) const
-    {
-        (void)convert_crlf;
-        return m_archive_ref->read_string(m_offset);
+        return m_archive_ref->get_fh_of(m_offset);
     }
 
     std::uint64_t archive_entry::file_size() const
@@ -145,34 +93,23 @@ namespace detail
         );
     }
 
-    std::unique_ptr<std::streambuf> file_node::getbuf(
-        std::ios_base::openmode mode
-    ) const
+    std::unique_ptr<file_handle> file_node::get_fh(file_flag flags) const
     {
         return visit(
-            [mode]<typename T>(const T& v) -> std::unique_ptr<std::streambuf>
+            [flags](const auto& v) -> std::unique_ptr<file_handle>
             {
-                constexpr bool has_buf = requires() { v.open(mode); };
-                if constexpr(has_buf)
-                    return v.open(mode);
-                throw virtual_file_system::error("bad file");
-            }
-        );
-    }
-
-    std::string file_node::read_string(bool convert_crlf) const
-    {
-        return visit(
-            [convert_crlf]<typename T>(const T& v) -> std::string
-            {
-                constexpr bool has_read_string = requires() { v.read_string(convert_crlf); };
-                if constexpr(has_read_string)
-                    return v.read_string(convert_crlf);
-                throw virtual_file_system::error("bad file");
+                return v.get_fh(flags);
             }
         );
     }
 } // namespace detail
+
+detail::file_node* find_impl(detail::file_node& root, path_view p)
+{
+    return const_cast<detail::file_node*>(
+        find_impl(std::as_const(root), p)
+    );
+}
 
 const detail::file_node* find_impl(const detail::file_node& root, path_view p)
 {
@@ -204,11 +141,11 @@ const detail::file_node* find_impl(const detail::file_node& root, path_view p)
     return current;
 }
 
-const detail::file_node* mkdir_impl(detail::file_node& root, path_view p)
+detail::file_node* mkdir_impl(detail::file_node& root, path_view p)
 {
     assert(root.is_directory());
 
-    const auto* current = &root;
+    auto* current = &root;
     for(path_view subview : p)
     {
         if(std::string_view(subview) == "/")

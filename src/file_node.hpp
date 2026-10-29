@@ -4,11 +4,13 @@
 #include <cstdint>
 #include <iosfwd>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <variant>
 #include <memory>
 #include <filesystem>
 #include <lochfolk/path.hpp>
+#include <lochfolk/io.hpp>
 #include "archive.hpp"
 
 namespace lochfolk
@@ -72,6 +74,17 @@ namespace file_data
             return m_children;
         }
 
+        /**
+         * @brief Directories cannot be opened
+         *
+         * `virtual_file_system::fopen` rejects directories before reaching
+         * this point, so this is only a safety net.
+         */
+        std::unique_ptr<file_handle> get_fh(file_flag) const
+        {
+            throw std::logic_error("lochfolk: a directory cannot be opened");
+        }
+
     private:
         file_container_type m_children;
     };
@@ -93,9 +106,13 @@ namespace file_data
 
         string_constant& operator=(string_constant&& rhs) noexcept = default;
 
-        std::unique_ptr<std::streambuf> open(std::ios_base::openmode mode) const;
-
-        std::string read_string(bool convert_crlf) const;
+        /**
+         * @brief Creates a read-only handle owning a copy of the contents
+         *
+         * The copy keeps the handle valid even if the node is replaced or
+         * removed while the handle is still in use.
+         */
+        std::unique_ptr<file_handle> get_fh(file_flag flags) const;
 
         std::uint64_t file_size() const;
 
@@ -117,9 +134,12 @@ namespace file_data
 
         sys_file& operator=(sys_file&& rhs) noexcept = default;
 
-        std::unique_ptr<std::filebuf> open(std::ios_base::openmode mode) const;
-
-        std::string read_string(bool convert_crlf) const;
+        /**
+         * @brief Opens the system file with the requested access modes
+         *
+         * @throw std::system_error if the file cannot be opened
+         */
+        std::unique_ptr<file_handle> get_fh(file_flag flags) const;
 
         std::uint64_t file_size() const;
 
@@ -141,9 +161,13 @@ namespace file_data
 
         archive_entry& operator=(archive_entry&& rhs) noexcept;
 
-        std::unique_ptr<std::streambuf> open(std::ios_base::openmode mode) const;
-
-        std::string read_string(bool convert_crlf) const;
+        /**
+         * @brief Creates a read-only handle holding the entry contents
+         *
+         * Archive entries are captured in memory, and writes are not
+         * supported.
+         */
+        std::unique_ptr<file_handle> get_fh(file_flag flags) const;
 
         std::uint64_t file_size() const;
 
@@ -191,7 +215,13 @@ namespace detail
         }
 
         template <typename T>
-        T* get_if() const noexcept
+        T* get_if() noexcept
+        {
+            return std::get_if<T>(&m_data);
+        }
+
+        template <typename T>
+        const T* get_if() const noexcept
         {
             return std::get_if<T>(&m_data);
         }
@@ -201,19 +231,19 @@ namespace detail
 
         std::uint64_t file_size() const;
 
-        std::unique_ptr<std::streambuf> getbuf(std::ios_base::openmode mode) const;
-
-        std::string read_string(bool convert_crlf = true) const;
+        std::unique_ptr<file_handle> get_fh(file_flag flags) const;
 
     private:
         const file_node* m_parent;
-        mutable data_type m_data;
+        data_type m_data;
     };
 } // namespace detail
 
+detail::file_node* find_impl(detail::file_node& root, path_view p);
+
 const detail::file_node* find_impl(const detail::file_node& root, path_view p);
 
-const detail::file_node* mkdir_impl(detail::file_node& root, path_view p);
+detail::file_node* mkdir_impl(detail::file_node& root, path_view p);
 
 template <typename T, typename... Args>
 std::pair<const detail::file_node*, bool> mount_impl(
@@ -226,7 +256,7 @@ std::pair<const detail::file_node*, bool> mount_impl(
 {
     static_assert(!std::same_as<T, file_data::directory>, "Cannot mount a directory");
     assert(p.is_absolute());
-    const auto* current = mkdir_impl(root, p.parent_path());
+    auto* current = mkdir_impl(root, p.parent_path());
     path_view filename = p.filename();
 
     auto* dir = current->get_if<file_data::directory>();

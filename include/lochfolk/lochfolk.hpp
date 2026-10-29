@@ -8,14 +8,14 @@
 // IWYU pragma: begin_exports
 
 #include "detail/config.hpp"
-#include "stream.hpp"
 #include "path.hpp"
+#include "io.hpp"
 #include "vfs.hpp"
 
 // IWYU pragma: end_exports
 
 #define LOCHFOLK_VERSION_MAJOR 0
-#define LOCHFOLK_VERSION_MINOR 1
+#define LOCHFOLK_VERSION_MINOR 2
 #define LOCHFOLK_VERSION_PATCH 0
 
 namespace lochfolk

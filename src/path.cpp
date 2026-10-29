@@ -76,7 +76,7 @@ void path_view::const_iterator::prev()
 path_view::const_iterator path_view::cbegin() const
 {
     if(empty())
-        return const_iterator();
+        return cend();
     if(is_absolute())
         return const_iterator(0, 1, *this);
 
@@ -132,13 +132,15 @@ path_view path_view::parent_path() const noexcept
         return path_view();
 
     std::string_view sv = m_str;
+    while(sv.size() > 1 && sv.back() == separator)
+        sv.remove_suffix(1);
+
     if(sv == "/")
         return path_view(std::string_view("/"));
-    if(sv.back() == '/')
-        sv.remove_suffix(1);
+
     std::size_t pos = sv.rfind(separator);
-    if(pos == m_str.npos)
-        return path_view(m_str);
+    if(pos == std::string_view::npos)
+        return path_view(sv);
     if(pos == 0)
         return path_view(std::string_view("/"));
 
