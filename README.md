@@ -11,18 +11,22 @@ lochfolk::virtual_file_system vfs;
 
 vfs.mount_archive("/archive"_pv, "system/path/to/archive.zip");
 
-// Read a whole file as text (CRLF is converted to LF by default)
-assert(vfs.read_string("/archive/info.txt"_pv) == "archive\n");
-
-// Read bytes through a file handle
 {
-    auto fh = vfs.fopen("/archive/data/value.txt"_pv);
+    auto vfss = vfs.open("/archive/info.txt"_pv);
 
-    std::byte buf[32];
-    const lochfolk::io_result n = fh->read(buf);
+    std::string str;
+    vfss >> str;
 
-    assert(!n.is_npos());
-    assert(n.bytes_transferred() == 14);
+    assert(str == "archive");
+}
+
+{
+    auto vfss = vfs.open("/archive/data/value.txt"_pv);
+
+    int v1 = 0, v2 = 0;
+    vfss >> v1 >> v2;
+    assert(v1 == 182375);
+    assert(v2 == 182376);
 }
 ```
 
@@ -39,15 +43,30 @@ vfs.list_files(std::cerr);
 
 assert(vfs.is_directory("/data/nested"_pv));
 
-assert(vfs.read_string("/data/a.txt"_pv) == "AAA\n");
-assert(vfs.read_string("/data/nested/b.txt"_pv) == "BBB\n");
+{
+    auto vfss = vfs.open("/data/a.txt"_pv);
+
+    std::string str;
+    vfss >> str;
+
+    assert(str == "AAA");
+}
 
 {
-    auto fh = vfs.fopen("/data/example.txt"_pv);
+    auto vfss = vfs.open("/data/nested/b.txt"_pv);
 
-    std::byte buf[4];
-    fh->read(buf);
-    assert(std::string(reinterpret_cast<const char*>(buf), 4) == "1013");
+    std::string str;
+    vfss >> str;
+
+    assert(str == "BBB");
+}
+
+{
+    auto vfss = vfs.open("/data/example.txt"_pv);
+
+    int v = 0;
+    vfss >> v;
+    assert(v == 1013);
 }
 ```
 
@@ -64,26 +83,41 @@ assert(vfs.exists("/data/text/example.txt"_pv));
 assert(!vfs.is_directory("/data/text/example.txt"_pv));
 
 {
-    auto fh = vfs.fopen("/data/text/example.txt"_pv);
+    auto vfss = vfs.open("/data/text/example.txt"_pv);
 
-    assert(fh->readable());
-    assert(!fh->writable());
-    assert(fh->file_size() == 7);
+    int v1 = 0, v2 = 0;
+    vfss >> v1 >> v2;
+    assert(v1 == 123);
+    assert(v2 == 456);
 }
 ```
 
-## File Handles
+## Streams and File Handles
 
-`virtual_file_system::fopen` returns a `std::unique_ptr<lochfolk::file_handle>`
-and is the only way to read or write file contents. A handle is independent of
-the file system it came from: it stays usable after the virtual file system is
-modified or destroyed.
+`virtual_file_system::open()` returns an `ivfstream`, an input stream over a
+`file_handle`. It supports the usual `operator>>`, `getline`, `read`, `seekg`
+and `tellg`. The stream is always opened for binary reading, so line endings
+are not translated; use `read_string()` or `fopen(..., true)` for CRLF
+conversion.
+
+```c++
+auto vfss = vfs.open("/data/example.txt"_pv);
+
+std::string line;
+std::getline(vfss, line);
+
+vfss.seekg(0);
+vfss.read(buf, sizeof buf);
+```
+
+For random access, or to write to host files, use `fopen()`, which returns a
+`std::unique_ptr<lochfolk::file_handle>`:
 
 ```c++
 auto fh = vfs.fopen(
     "/data/example.txt"_pv,
     lochfolk::file_flag::read_write, // readable | writable
-    true                             // convert CRLF to LF while reading
+    false                            // convert CRLF to LF while reading?
 );
 
 std::byte buf[64];

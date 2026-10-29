@@ -238,6 +238,18 @@ std::unique_ptr<file_handle> virtual_file_system::fopen(
     return fh;
 }
 
+ivfstream virtual_file_system::open(
+    path_view p, std::ios_base::openmode mode
+)
+{
+    if(mode & (std::ios_base::out | std::ios_base::app | std::ios_base::trunc))
+        throw std::invalid_argument(
+            "lochfolk: open() is read-only; use fopen() for writing"
+        );
+
+    return ivfstream(fopen(p, file_flag::readable, false));
+}
+
 std::string virtual_file_system::read_string(path_view p, bool convert_crlf)
 {
     std::unique_ptr<file_handle> fh = fopen(
