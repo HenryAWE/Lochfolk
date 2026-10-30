@@ -27,11 +27,31 @@ class virtual_file_system
     struct vfs_data;
 
 public:
-    class error : public std::runtime_error
+#ifdef _MSC_VER
+#    pragma warning(push)
+// The exception is thrown from the library and caught by users, so its type
+// information must be shared across the module boundary. The base class comes
+// from the C++ runtime and is intentionally not exported.
+#    pragma warning(disable : 4275)
+#endif
+    class LOCHFOLK_API error : public std::runtime_error
     {
     public:
         using runtime_error::runtime_error;
+
+        /**
+         * @brief Out-of-line key function for the exception type
+         *
+         * It makes the vtable and type_info single, emitted by the library
+         * only. Without it every translation unit that catches the exception
+         * would get its own copy, which breaks catching across a shared
+         * library boundary on some platforms (libc++/macOS).
+         */
+        ~error() override;
     };
+#ifdef _MSC_VER
+#    pragma warning(pop)
+#endif
 
     LOCHFOLK_API virtual_file_system();
     LOCHFOLK_API virtual_file_system(const virtual_file_system&) = delete;

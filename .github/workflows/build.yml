@@ -112,3 +112,35 @@ jobs:
 
           - name: Test
             run: xmake test --verbose
+
+    macOS:
+        runs-on: macos-15
+
+        name: macOS arm64 (AppleClang)
+        strategy:
+          matrix:
+            kind: [static, shared]
+          fail-fast: false
+
+        steps:
+          - uses: actions/checkout@v4
+          - uses: xmake-io/github-action-setup-xmake@v1
+            with:
+              xmake-version: v3.0.2
+              actions-cache-folder: '.xmake-cache'
+              actions-cache-key: "macos-15-arm64"
+              package-cache: true
+              package-cache-key: "macos-15-arm64"
+              build-cache: true
+              build-cache-key: "macos-15-arm64-release"
+
+          - name: Configure
+            run: |
+              xmake config --yes -m release --unit_test=y -k ${{ matrix.kind }}
+
+          - name: Build
+            run: |
+              xmake build --verbose --diagnosis --all
+
+          - name: Test
+            run: xmake test --verbose
