@@ -9,6 +9,8 @@
 
 namespace lochfolk
 {
+virtual_file_system::error::~error() = default;
+
 struct virtual_file_system::vfs_data
 {
     detail::file_node root;

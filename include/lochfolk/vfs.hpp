@@ -38,6 +38,16 @@ public:
     {
     public:
         using runtime_error::runtime_error;
+
+        /**
+         * @brief Out-of-line key function for the exception type
+         *
+         * It makes the vtable and type_info single, emitted by the library
+         * only. Without it every translation unit that catches the exception
+         * would get its own copy, which breaks catching across a shared
+         * library boundary on some platforms (libc++/macOS).
+         */
+        ~error() override;
     };
 #ifdef _MSC_VER
 #    pragma warning(pop)
