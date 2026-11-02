@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <sstream>
 
-TEST(path, constructor)
+TEST(Path, Constructor)
 {
     auto ss_helper = [](const lochfolk::path& p)
     {
@@ -37,7 +37,7 @@ TEST(path, constructor)
     }
 }
 
-TEST(path, is_absolute)
+TEST(Path, IsAbsolute)
 {
     {
         lochfolk::path p;
@@ -80,7 +80,7 @@ TEST(path, is_absolute)
     }
 }
 
-TEST(path, append)
+TEST(Path, Append)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -117,7 +117,7 @@ TEST(path, append)
     }
 }
 
-TEST(path, parent_path)
+TEST(Path, ParentPath)
 {
     {
         lochfolk::path p = "/data/text/example.txt";
@@ -187,7 +187,7 @@ TEST(path, parent_path)
     }
 }
 
-TEST(path, filename)
+TEST(Path, Filename)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -202,7 +202,7 @@ TEST(path, filename)
     EXPECT_EQ(lochfolk::path("/").filename(), ""_pv);
 }
 
-TEST(path, extension)
+TEST(Path, Extension)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -213,7 +213,7 @@ TEST(path, extension)
     EXPECT_EQ("/foo/.hidden"_pv.extension(), ""_pv);
 }
 
-TEST(path, iterator_forward)
+TEST(Path, IteratorForward)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -308,7 +308,7 @@ TEST(path, iterator_forward)
     }
 }
 
-TEST(path, iterator_backward)
+TEST(Path, IteratorBackward)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -413,7 +413,7 @@ TEST(path, iterator_backward)
     }
 }
 
-TEST(path, lexically_normal)
+TEST(Path, LexicallyNormal)
 {
     using namespace lochfolk::vfs_literals;
 
