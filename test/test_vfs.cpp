@@ -76,7 +76,7 @@ std::string read_all(
 }
 } // namespace
 
-TEST(vfs, mount_string_constant)
+TEST(VFS, MountStringConstant)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -187,7 +187,7 @@ TEST(vfs, mount_string_constant)
     EXPECT_THROW(vfs.fopen("/data/text/example.txt"_pv), lochfolk::virtual_file_system::error);
 }
 
-TEST(vfs, mount_sys_file)
+TEST(VFS, MountSysFile)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -244,7 +244,7 @@ TEST(vfs, mount_sys_file)
     EXPECT_TRUE(std::filesystem::exists("test_vfs_data/example.txt"));
 }
 
-TEST(vfs, mount_sys_dir)
+TEST(VFS, MountSysDir)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -278,7 +278,7 @@ TEST(vfs, mount_sys_dir)
     }
 }
 
-TEST(vfs, mount_zip_archive)
+TEST(VFS, MountZIPArchive)
 {
     if(!std::filesystem::exists("test_vfs_data/ar.zip"))
         GTEST_SKIP() << "test_vfs_data/ar.zip not found";
@@ -320,7 +320,7 @@ TEST(vfs, mount_zip_archive)
     EXPECT_FALSE(vfs.exists("/archive/data/value.txt"_pv));
 }
 
-TEST(vfs, remove_missing)
+TEST(VFS, RemoveMissing)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -336,7 +336,7 @@ TEST(vfs, remove_missing)
     EXPECT_FALSE(vfs.exists("/data/file.txt"_pv));
 }
 
-TEST(vfs, mount_empty_dir)
+TEST(VFS, MountEmptyDir)
 {
     namespace stdfs = std::filesystem;
     using namespace lochfolk::vfs_literals;
@@ -357,7 +357,7 @@ TEST(vfs, mount_empty_dir)
     stdfs::remove_all(empty_dir, ec);
 }
 
-TEST(vfs, fopen_errors)
+TEST(VFS, FopenErrors)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -373,7 +373,7 @@ TEST(vfs, fopen_errors)
     EXPECT_THROW((void)vfs.read_string("/dir"_pv), lochfolk::virtual_file_system::error);
 }
 
-TEST(vfs, fopen_missing_system_file)
+TEST(VFS, FopenMissingSystemFile)
 {
     namespace stdfs = std::filesystem;
     using namespace lochfolk::vfs_literals;
@@ -391,7 +391,7 @@ TEST(vfs, fopen_missing_system_file)
     EXPECT_THROW(vfs.fopen("/gone.txt"_pv), std::system_error);
 }
 
-TEST(vfs, read_only_entries_ignore_writable)
+TEST(VFS, ReadOnlyEntriesIgnoreWritable)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -419,7 +419,7 @@ TEST(vfs, read_only_entries_ignore_writable)
     }
 }
 
-TEST(vfs, writable_system_file)
+TEST(VFS, WritableSystemFile)
 {
     namespace stdfs = std::filesystem;
     using namespace lochfolk::vfs_literals;
@@ -467,7 +467,7 @@ TEST(vfs, writable_system_file)
     stdfs::remove(file);
 }
 
-TEST(vfs, convert_crlf_string)
+TEST(VFS, ConvertCRLFString)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -508,7 +508,7 @@ TEST(vfs, convert_crlf_string)
     }
 }
 
-TEST(vfs, convert_crlf_edge_cases)
+TEST(VFS, ConvertCRLFEdgeCases)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -562,7 +562,7 @@ TEST(vfs, convert_crlf_edge_cases)
     }
 }
 
-TEST(vfs, convert_crlf_system_file)
+TEST(VFS, ConvertCRLFSystemFile)
 {
     namespace stdfs = std::filesystem;
     using namespace lochfolk::vfs_literals;
@@ -587,7 +587,7 @@ TEST(vfs, convert_crlf_system_file)
     stdfs::remove(file);
 }
 
-TEST(vfs, convert_crlf_archive)
+TEST(VFS, ConvertCRLFArchive)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -602,7 +602,7 @@ TEST(vfs, convert_crlf_archive)
     EXPECT_EQ(vfs.read_string("/archive/crlf.txt"_pv, false), "line1\r\nline2\r\n");
 }
 
-TEST(vfs, large_content)
+TEST(VFS, LargeContent)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -636,7 +636,7 @@ TEST(vfs, large_content)
     }
 }
 
-TEST(vfs, access_context)
+TEST(VFS, AccessContext)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -715,7 +715,7 @@ TEST(vfs, access_context)
     EXPECT_FALSE(ctx.exists("/data/strings/str.txt"_pv));
 }
 
-TEST(vfs, access_context_archive)
+TEST(VFS, AccessContextArchive)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -755,7 +755,7 @@ TEST(vfs, access_context_archive)
     EXPECT_FALSE(ctx.exists("data/value.txt"_pv));
 }
 
-TEST(vfs, stream_text_mode)
+TEST(VFS, StreamTextMode)
 {
     using namespace lochfolk::vfs_literals;
 
@@ -847,7 +847,7 @@ TEST(vfs, stream_text_mode)
     }
 }
 
-TEST(vfs, stream_read_error)
+TEST(VFS, StreamReadError)
 {
     lochfolk::ivfstream vfss(std::make_unique<failing_handle>());
 
@@ -858,7 +858,7 @@ TEST(vfs, stream_read_error)
     EXPECT_FALSE(vfss.eof());
 }
 
-TEST(vfs, stream_adapter)
+TEST(VFS, StreamAdapter)
 {
     using namespace lochfolk::vfs_literals;
 
