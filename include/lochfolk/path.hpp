@@ -237,7 +237,7 @@ public:
         using difference_type = std::ptrdiff_t;
         using iterator_category = std::bidirectional_iterator_tag;
 
-        const_iterator() noexcept;
+        const_iterator() noexcept = default;
         const_iterator(const const_iterator&) noexcept = default;
 
         bool operator==(const const_iterator& rhs) const noexcept = default;
