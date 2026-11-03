@@ -181,6 +181,11 @@ void zip_archive::open_entry() const
 
 std::size_t zip_archive::read_entry(std::span<std::byte> buf) const
 {
+    // mz_zip_entry_read() reports MZ_PARAM_ERROR for a zero-length request,
+    // so zero-sized entries must be handled before reaching minizip.
+    if(buf.empty()) [[unlikely]]
+        return 0;
+
     std::int32_t result = mz_zip_entry_read(
         m_handle.get(), buf.data(), static_cast<std::int32_t>(buf.size())
     );

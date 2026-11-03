@@ -432,6 +432,35 @@ TEST(VFS, MountZIPArchive)
     EXPECT_FALSE(vfs.exists("/archive/data/value.txt"_pv));
 }
 
+TEST(VFS, ReadEmptyEntryFromArchive)
+{
+    using namespace lochfolk::vfs_literals;
+
+    if(!std::filesystem::exists("test_vfs_data/ar.zip"))
+        GTEST_SKIP() << "test_vfs_data/ar.zip not found";
+
+    lochfolk::virtual_file_system vfs;
+    vfs.mount_archive("/archive"_pv, "test_vfs_data/ar.zip");
+
+    ASSERT_TRUE(vfs.exists("/archive/empty.txt"_pv));
+    EXPECT_FALSE(vfs.is_directory("/archive/empty.txt"_pv));
+    EXPECT_EQ(vfs.file_size("/archive/empty.txt"_pv), 0u);
+
+    // A zero-byte entry must read as empty. mz_zip_entry_read() rejects
+    // zero-length reads with MZ_PARAM_ERROR, so the archive reader has to
+    // handle this case before calling into minizip.
+    EXPECT_EQ(vfs.read_string("/archive/empty.txt"_pv), "");
+    EXPECT_EQ(vfs.read_string("/archive/empty.txt"_pv, false), "");
+    EXPECT_EQ(read_all(vfs, "/archive/empty.txt"_pv), "");
+
+    {
+        auto fh = vfs.fopen("/archive/empty.txt"_pv);
+
+        EXPECT_EQ(fh->file_size(), 0u);
+        EXPECT_EQ(read_all(*fh), "");
+    }
+}
+
 TEST(VFS, RemoveMissing)
 {
     using namespace lochfolk::vfs_literals;
