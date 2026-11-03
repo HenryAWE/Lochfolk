@@ -477,6 +477,34 @@ TEST(VFS, RemoveMissing)
     EXPECT_FALSE(vfs.exists("/data/file.txt"_pv));
 }
 
+TEST(VFS, RemoveRootSeparators)
+{
+    using namespace lochfolk::vfs_literals;
+
+    // A path of separators only refers to the root directory, exactly like
+    // "/". It used to throw std::out_of_range from string_view::substr().
+    lochfolk::virtual_file_system vfs;
+    vfs.mount_string("/a.txt"_pv, "a");
+    vfs.mount_string("/dir/b.txt"_pv, "b");
+
+    EXPECT_TRUE(vfs.remove("//"_pv));
+    EXPECT_TRUE(vfs.is_directory("/"_pv));
+    EXPECT_FALSE(vfs.exists("/a.txt"_pv));
+    EXPECT_FALSE(vfs.exists("/dir"_pv));
+
+    vfs.mount_string("/c.txt"_pv, "c");
+    EXPECT_TRUE(vfs.remove("///"_pv));
+    EXPECT_FALSE(vfs.exists("/c.txt"_pv));
+
+    vfs.mount_string("/d.txt"_pv, "d");
+    EXPECT_TRUE(vfs.remove("////"_pv));
+    EXPECT_FALSE(vfs.exists("/d.txt"_pv));
+
+    vfs.mount_string("/e.txt"_pv, "e");
+    EXPECT_TRUE(vfs.remove("/"_pv));
+    EXPECT_FALSE(vfs.exists("/e.txt"_pv));
+}
+
 TEST(VFS, MountEmptyDir)
 {
     namespace stdfs = std::filesystem;

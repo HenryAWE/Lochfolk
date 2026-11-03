@@ -214,7 +214,19 @@ bool virtual_file_system::remove(path_view p)
 {
     if(p.empty() || !p.is_absolute()) [[unlikely]]
         return false;
-    if(p == "/"_pv)
+
+    // A path made up only of separators denotes the root directory, just like
+    // "/". find_impl() resolves e.g. "//" to the root as well, and taking
+    // substr() of the empty remainder used to throw std::out_of_range.
+    const std::string_view trimmed = [](path_view pv) -> std::string_view
+    {
+        std::string_view result(pv);
+        while(!result.empty() && result.back() == path_view::separator)
+            result.remove_suffix(1);
+        return result;
+    }(p);
+
+    if(trimmed.empty())
     {
         auto* root_dir = m_vfs_data->root.get_if<file_data::directory>();
         assert(root_dir);
@@ -227,17 +239,13 @@ bool virtual_file_system::remove(path_view p)
     if(!parent || !parent->is_directory())
         return false;
 
-    std::string_view target_sv = [](path_view pv)
+    const std::string_view target_sv = [](std::string_view result)
     {
-        std::string_view result(pv);
-        while(!result.empty() && result.back() == path_view::separator)
-            result.remove_suffix(1);
-
         std::size_t pos = result.rfind(path_view::separator);
         if(pos == std::string_view::npos)
             pos = 0;
         return result.substr(pos + 1);
-    }(p);
+    }(trimmed);
 
     auto* parent_dir = parent->get_if<file_data::directory>();
     auto it = parent_dir->children().find(path_view(target_sv));
