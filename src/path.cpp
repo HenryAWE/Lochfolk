@@ -295,6 +295,10 @@ path path::lexically_normal() const
 
     std::string result;
 
+    // The root directory is always kept; a relative path must stay relative.
+    if(m_str.front() == separator)
+        result += separator;
+
     const auto sentinel = m_str.end();
     for(auto it = m_str.begin(); it != sentinel;)
     {
@@ -302,14 +306,18 @@ path path::lexically_normal() const
 
         if(ch == separator)
         {
-            result += separator;
-
+            // Collapse runs of separators. Append a separator only when it
+            // actually separates two components, so that a cancelled component
+            // ("a/..//b") cannot turn the result into an absolute path.
             it = std::find_if(
                 std::next(it),
                 sentinel,
                 [](char c) -> bool
                 { return c != separator; }
             );
+
+            if(!result.empty() && result.back() != separator)
+                result += separator;
             continue;
         }
 
@@ -330,27 +338,52 @@ path path::lexically_normal() const
                 }
 
                 // "..", parent path
-
-                if(result == "/") // result is root path
                 {
-                    ++it;
-                    continue;
-                }
-                else if(result.empty())
-                {
-                    result = "..";
-                    ++it;
-                    continue;
+                    // Locate the last component, ignoring trailing separators.
+                    auto comp_end = result.size();
+                    while(comp_end > 0 && result[comp_end - 1] == separator)
+                        --comp_end;
+
+                    std::size_t comp_start = 0;
+                    if(comp_end > 0)
+                    {
+                        auto pos = result.rfind(separator, comp_end - 1);
+                        comp_start = pos == result.npos ? 0 : pos + 1;
+                    }
+
+                    const std::string_view last_component(
+                        result.data() + comp_start,
+                        comp_end - comp_start
+                    );
+
+                    if(last_component == "..")
+                    {
+                        // An unresolved leading ".." must not cancel another
+                        // one, e.g. "../.." stays "../..".
+                        result.erase(comp_end);
+                        result += separator;
+                        result += "..";
+                    }
+                    else if(comp_end == 0)
+                    {
+                        // Nothing to cancel: keep a relative "..", while ".."
+                        // applied to the root stays at the root.
+                        if(result.empty())
+                            result = "..";
+                    }
+                    else
+                    {
+                        // Cancel the last component and keep the separator in
+                        // front of it: "a/b/.." -> "a/".
+                        auto pos = result.rfind(separator, comp_end - 1);
+                        if(pos == result.npos)
+                            result.clear();
+                        else
+                            result.erase(pos + 1);
+                    }
                 }
 
-                if(result.back() == separator)
-                    result.pop_back();
-                auto pos = result.rfind(separator);
-                if(pos == result.npos)
-                    result.clear();
-                else
-                    result.erase(pos + 1);
-
+                ++it; // Skip the second '.'
                 continue;
             }
 
@@ -377,6 +410,25 @@ ordinary:
 
     if(result.empty())
         return path(".");
+
+    // A trailing separator is kept only after a regular component or the root
+    // directory, never after "." or "..".
+    auto last_end = result.size();
+    while(last_end > 0 && result[last_end - 1] == separator)
+        --last_end;
+
+    if(last_end != 0 && last_end < result.size())
+    {
+        auto pos = result.rfind(separator, last_end - 1);
+        std::size_t comp_start = pos == result.npos ? 0 : pos + 1;
+        const std::string_view last_component(
+            result.data() + comp_start,
+            last_end - comp_start
+        );
+        if(last_component == ".." || last_component == ".")
+            result.erase(last_end);
+    }
+
     return path(std::move(result));
 }
 

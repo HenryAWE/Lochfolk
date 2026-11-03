@@ -447,6 +447,24 @@ TEST(Path, LexicallyNormal)
     check_lex_normal("../..a/", "../..a/"_pv);
     check_lex_normal("../...a/", "../...a/"_pv);
     check_lex_normal("../..a////", "../..a/"_pv);
+
+    // Unresolved ".." components must be preserved instead of swallowed.
+    check_lex_normal("../..", "../.."_pv);
+    check_lex_normal("../..//", "../.."_pv);
+    check_lex_normal("../../", "../.."_pv);
+    check_lex_normal("../", ".."_pv);
+    check_lex_normal("a/../../../b", "../../b"_pv);
+    check_lex_normal("../a/../..", "../.."_pv);
+    check_lex_normal("../a/b/../../..", "../.."_pv);
+
+    // Cancelling a component must not introduce a stray separator or turn a
+    // relative path into an absolute one.
+    check_lex_normal("a/..//b", "b"_pv);
+    check_lex_normal("a/..//", "."_pv);
+    check_lex_normal("/../a", "/a"_pv);
+    check_lex_normal("/../", "/"_pv);
+    check_lex_normal("/a/..//b", "/b"_pv);
+    check_lex_normal("/a/../../b", "/b"_pv);
 }
 
 int main(int argc, char* argv[])
