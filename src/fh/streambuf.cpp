@@ -1,4 +1,5 @@
 #include "streambuf.hpp"
+#include "crlf_convert.hpp"
 #include <algorithm>
 #include <ios>
 #include <limits>
@@ -11,7 +12,6 @@ namespace lochfolk
 namespace
 {
     constexpr char cr = '\r';
-    constexpr char lf = '\n';
 } // namespace
 
 fh_streambuf::fh_streambuf(
@@ -29,9 +29,15 @@ bool fh_streambuf::fill()
 {
     while(!m_eof)
     {
+        // Text mode needs distinct input and output buffers: the translation
+        // can emit one byte more than it reads (a held CR) and must not
+        // overwrite input that has not been translated yet.
+        char_type raw[buf_size];
+        char_type* const dest = m_convert ? raw : m_buf;
+
         const io_result result = m_fh->read(
             std::span<std::byte>(
-                reinterpret_cast<std::byte*>(m_buf), buf_size
+                reinterpret_cast<std::byte*>(dest), buf_size
             )
         );
 
@@ -57,58 +63,21 @@ bool fh_streambuf::fill()
             return true;
         }
 
-        // In text mode the buffer is translated in place: every byte is
-        // written at an index no greater than the one it was read from.
+        // Translate the raw chunk into m_buf, which has room for one extra
+        // byte in case a CR held from the previous chunk is emitted first.
         m_raw_begin = m_pending_cr ? read_start - 1 : read_start;
         m_pairs.clear();
 
-        std::size_t out = 0;
-        std::size_t i = 0;
-
-        if(m_pending_cr)
-        {
-            m_pending_cr = false;
-            if(m_buf[0] == lf)
-            {
-                // The LF completes a pair whose CR was the last byte of the
-                // previous chunk.
-                m_pairs.push_back(0);
-                m_buf[out++] = lf;
-                i = 1;
-            }
-            else
-            {
-                m_buf[out++] = cr;
-            }
-        }
-
-        for(; i < size; ++i)
-        {
-            if(m_buf[i] != cr)
-            {
-                m_buf[out++] = m_buf[i];
-                continue;
-            }
-
-            if(i + 1 < size)
-            {
-                if(m_buf[i + 1] == lf)
-                {
-                    m_pairs.push_back(out);
-                    m_buf[out++] = lf;
-                    ++i;
-                }
-                else
-                {
-                    m_buf[out++] = cr;
-                }
-            }
-            else
-            {
-                // The CR may be followed by an LF in the next chunk.
-                m_pending_cr = true;
-            }
-        }
+        const std::size_t out = detail::convert_crlf(
+            std::span<const std::byte>(
+                reinterpret_cast<const std::byte*>(raw), size
+            ),
+            std::span<std::byte>(
+                reinterpret_cast<std::byte*>(m_buf), sizeof(m_buf)
+            ),
+            m_pending_cr,
+            &m_pairs
+        );
 
         if(out > 0)
         {

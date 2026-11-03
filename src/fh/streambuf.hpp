@@ -101,7 +101,14 @@ private:
 
     bool m_pending_cr = false;
     bool m_eof = false;
-    char_type m_buf[buf_size];
+
+    /**
+     * @brief Translated output; one byte larger than a raw chunk
+     *
+     * A CR held back from the previous chunk can be emitted in addition to
+     * the bytes of the current chunk.
+     */
+    char_type m_buf[buf_size + 1];
 };
 } // namespace lochfolk
 

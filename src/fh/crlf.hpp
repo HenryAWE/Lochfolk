@@ -51,8 +51,17 @@ private:
      */
     bool refill();
 
+    static constexpr std::size_t chunk_size = 4096;
+
     std::unique_ptr<file_handle> m_inner;
-    std::array<std::byte, 4096> m_buf;
+
+    /**
+     * @brief Translated output; one byte larger than a raw chunk
+     *
+     * A CR held back from the previous chunk can be emitted in addition to
+     * the bytes of the current chunk.
+     */
+    std::array<std::byte, chunk_size + 1> m_buf;
     std::size_t m_begin = 0;
     std::size_t m_end = 0;
     bool m_pending_cr = false;

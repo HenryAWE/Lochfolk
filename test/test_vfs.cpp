@@ -703,6 +703,159 @@ TEST(VFS, ConvertCRLFEdgeCases)
     }
 }
 
+TEST(VFS, ConvertCRLFHandleChunkBoundary)
+{
+    using namespace lochfolk::vfs_literals;
+
+    lochfolk::virtual_file_system vfs;
+
+    // The previous 4096-byte chunk ends with a CR, which is held back. The
+    // next chunk is full and starts with a byte other than LF, so the held
+    // CR is emitted in addition to the whole chunk.
+    std::string content(4095, 'x');
+    content += '\r';
+    content += std::string(4096, 'y');
+    vfs.mount_string("/handle_edge.txt"_pv, content);
+
+    EXPECT_EQ(vfs.read_string("/handle_edge.txt"_pv), content);
+    EXPECT_EQ(vfs.read_string("/handle_edge.txt"_pv, false), content);
+
+    {
+        auto fh = vfs.fopen(
+            "/handle_edge.txt"_pv, lochfolk::file_flag::readable, true
+        );
+        EXPECT_EQ(read_all(*fh, 1), content);
+    }
+
+    {
+        auto fh = vfs.fopen(
+            "/handle_edge.txt"_pv, lochfolk::file_flag::readable, true
+        );
+        EXPECT_EQ(read_all(*fh), content);
+    }
+}
+
+TEST(VFS, ConvertCRLFStreamChunkBoundary)
+{
+    using namespace lochfolk::vfs_literals;
+
+    lochfolk::virtual_file_system vfs;
+
+    // The 8192-byte stream buffer ends with a CR that must be held back; the
+    // following chunk starts with a byte other than LF and must not be
+    // overwritten by the held CR.
+    std::string content(8191, 'x');
+    content += '\r';
+    content += "a\nb";
+    vfs.mount_string("/stream_edge.txt"_pv, content);
+
+    {
+        auto vfss = vfs.open("/stream_edge.txt"_pv);
+        std::istreambuf_iterator<char> first(vfss);
+        std::istreambuf_iterator<char> last;
+        EXPECT_EQ(std::string(first, last), content);
+    }
+
+    // The following chunk is full, so the translated output of that chunk is
+    // one byte larger than its raw input.
+    std::string full(8191, 'x');
+    full += '\r';
+    full += std::string(8192, 'y');
+    vfs.mount_string("/stream_full.txt"_pv, full);
+
+    {
+        auto vfss = vfs.open("/stream_full.txt"_pv);
+        std::istreambuf_iterator<char> first(vfss);
+        std::istreambuf_iterator<char> last;
+        EXPECT_EQ(std::string(first, last), full);
+    }
+}
+
+TEST(VFS, ConvertCRLFChunkBoundariesDifferential)
+{
+    using namespace lochfolk::vfs_literals;
+
+    // Reference translator: CRLF becomes LF, a lone CR is preserved.
+    const auto reference = [](std::string_view raw)
+    {
+        std::string result;
+        result.reserve(raw.size());
+
+        for(std::size_t i = 0; i < raw.size(); ++i)
+        {
+            if(raw[i] == '\r' && i + 1 < raw.size() && raw[i + 1] == '\n')
+            {
+                result.push_back('\n');
+                ++i;
+            }
+            else
+            {
+                result.push_back(raw[i]);
+            }
+        }
+
+        return result;
+    };
+
+    const auto read_stream =
+        [](lochfolk::virtual_file_system& vfs,
+           lochfolk::path_view p,
+           std::ios_base::openmode mode)
+    {
+        auto vfss = vfs.open(p, mode);
+        std::istreambuf_iterator<char> first(vfss);
+        std::istreambuf_iterator<char> last;
+        return std::string(first, last);
+    };
+
+    // CRs placed at the chunk boundaries of both implementations (4096 bytes
+    // for the handle filter, 8192 for the stream buffer), with and without a
+    // following LF, plus small inputs.
+    const std::string x4095(4095, 'x');
+    const std::string x4096(4096, 'x');
+    const std::string x8191(8191, 'x');
+    const std::string x8192(8192, 'x');
+
+    const std::vector<std::string> cases{
+        "",
+        "\r",
+        "\r\n",
+        "a\rb\r\n\r\r\n",
+        "tail\r",
+        x4095 + '\r' + x4096,
+        x4095 + '\r' + '\n' + x4096,
+        x4095 + '\r' + x4096 + "\r\n" + x4096,
+        x8191 + '\r' + x8192,
+        x8191 + '\r' + '\n' + x8192,
+        x8191 + '\r' + "a\nb",
+        x8191 + '\r',
+        x8192 + '\r',
+    };
+
+    lochfolk::virtual_file_system vfs;
+
+    for(std::size_t i = 0; i < cases.size(); ++i)
+    {
+        const std::string& raw = cases[i];
+        const std::string expected = reference(raw);
+        const std::string path = "/case" + std::to_string(i) + ".txt";
+        const lochfolk::path_view pv(path);
+
+        vfs.mount_string(pv, raw);
+
+        // fh_crlf (fopen/read_string) and fh_streambuf (streams) must agree
+        // with the reference translation regardless of chunk boundaries.
+        EXPECT_EQ(vfs.read_string(pv), expected) << "case " << i;
+        EXPECT_EQ(vfs.read_string(pv, false), raw) << "case " << i;
+        EXPECT_EQ(read_stream(vfs, pv, std::ios_base::in), expected)
+            << "case " << i;
+        EXPECT_EQ(
+            read_stream(vfs, pv, std::ios_base::in | std::ios_base::binary),
+            raw
+        ) << "case " << i;
+    }
+}
+
 TEST(VFS, ConvertCRLFSystemFile)
 {
     namespace stdfs = std::filesystem;
