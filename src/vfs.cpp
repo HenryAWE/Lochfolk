@@ -3,6 +3,7 @@
 #include <cassert>
 #include <memory>
 #include <span>
+#include <stdexcept>
 #include "errmsg.hpp"
 #include "file_node.hpp"
 #include "fh/crlf.hpp"
@@ -34,12 +35,13 @@ void virtual_file_system::mount_string(
     path_view p, std::string_view str, bool overwrite
 )
 {
+    // Copy the contents: the VFS owns them, so the source may be temporary.
     mount_impl(
         m_vfs_data->root,
         p,
         overwrite,
         std::in_place_type<file_data::string_constant>,
-        str
+        std::string(str)
     );
 }
 
@@ -47,6 +49,11 @@ void virtual_file_system::mount_string(
     path_view p, const char* str, bool overwrite
 )
 {
+    if(!str) [[unlikely]]
+        throw std::invalid_argument(
+            "lochfolk: mount_string() requires a non-null string"
+        );
+
     mount_string(
         p,
         std::string_view(str),
@@ -65,6 +72,32 @@ void virtual_file_system::mount_string(
         std::in_place_type<file_data::string_constant>,
         std::move(str)
     );
+}
+
+void virtual_file_system::mount_string_view(
+    path_view p, std::string_view str, bool overwrite
+)
+{
+    // Non-owning: the caller guarantees the contents outlive the entry.
+    mount_impl(
+        m_vfs_data->root,
+        p,
+        overwrite,
+        std::in_place_type<file_data::string_constant>,
+        str
+    );
+}
+
+void virtual_file_system::mount_string_view(
+    path_view p, const char* str, bool overwrite
+)
+{
+    if(!str) [[unlikely]]
+        throw std::invalid_argument(
+            "lochfolk: mount_string_view() requires a non-null string"
+        );
+
+    mount_string_view(p, std::string_view(str), overwrite);
 }
 
 void virtual_file_system::mount_file(

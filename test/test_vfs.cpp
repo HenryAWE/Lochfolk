@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 namespace
@@ -74,6 +75,36 @@ std::string read_all(
     auto fh = vfs.fopen(p, flags);
     return read_all(*fh);
 }
+
+/**
+ * @brief Whether mount_string_view() accepts a source of type @p T
+ *
+ * The deleted overloads must reject `std::string` rvalues, for which the
+ * stored view would dangle as soon as the full expression ends, while the
+ * safe sources stay accepted.
+ */
+template <typename T>
+concept CanMountStringView = requires(
+    lochfolk::virtual_file_system& vfs,
+    lochfolk::path_view p,
+    T&& source
+)
+{
+    vfs.mount_string_view(p, std::forward<T>(source));
+};
+
+static_assert(
+    !CanMountStringView<std::string>,
+    "mount_string_view() must reject std::string rvalues"
+);
+static_assert(
+    !CanMountStringView<const std::string>,
+    "mount_string_view() must reject const std::string rvalues"
+);
+static_assert(CanMountStringView<std::string&>);
+static_assert(CanMountStringView<const std::string&>);
+static_assert(CanMountStringView<std::string_view>);
+static_assert(CanMountStringView<const char*>);
 } // namespace
 
 TEST(VFS, MountStringConstant)
@@ -185,6 +216,87 @@ TEST(VFS, MountStringConstant)
     EXPECT_FALSE(vfs.remove("/data/text/example.txt"_pv));
     EXPECT_FALSE(vfs.exists("/data/text/example.txt"_pv));
     EXPECT_THROW(vfs.fopen("/data/text/example.txt"_pv), lochfolk::virtual_file_system::error);
+}
+
+TEST(VFS, MountStringCopiesSource)
+{
+    using namespace lochfolk::vfs_literals;
+
+    lochfolk::virtual_file_system vfs;
+
+    // Every source is modified and destroyed before the entries are read, so
+    // storing views instead of copies would be a use-after-free here.
+    {
+        char local[64] = "local buffer";
+        vfs.mount_string("/local.txt"_pv, local);
+        local[0] = 'X';
+    }
+
+    {
+        std::string source = "a source string long enough to be heap allocated";
+
+        vfs.mount_string("/view.txt"_pv, std::string_view(source));
+        source.assign("changed after mounting");
+    }
+
+    {
+        std::string source = "moved source string";
+        vfs.mount_string("/moved.txt"_pv, std::move(source));
+    }
+
+    EXPECT_EQ(vfs.read_string("/local.txt"_pv), "local buffer");
+    EXPECT_EQ(
+        vfs.read_string("/view.txt"_pv),
+        "a source string long enough to be heap allocated"
+    );
+    EXPECT_EQ(vfs.read_string("/moved.txt"_pv), "moved source string");
+}
+
+TEST(VFS, MountStringViewKeepsSource)
+{
+    using namespace lochfolk::vfs_literals;
+
+    std::string storage = "view content";
+    lochfolk::virtual_file_system vfs;
+
+    vfs.mount_string_view("/view.txt"_pv, storage);
+
+    EXPECT_EQ(vfs.file_size("/view.txt"_pv), 12);
+    EXPECT_EQ(vfs.read_string("/view.txt"_pv), "view content");
+
+    // No copy is made: an in-place change of the source is visible.
+    storage[0] = 'V';
+    EXPECT_EQ(vfs.read_string("/view.txt"_pv), "View content");
+
+    // Overwrite semantics are the same as for mount_string().
+    vfs.mount_string_view("/view.txt"_pv, std::string_view("replacement"), false);
+    EXPECT_EQ(vfs.read_string("/view.txt"_pv), "View content");
+
+    vfs.mount_string_view("/view.txt"_pv, std::string_view("replacement"));
+    EXPECT_EQ(vfs.read_string("/view.txt"_pv), "replacement");
+
+    // A string literal has static storage duration, so a view of it is safe.
+    vfs.mount_string_view("/literal.txt"_pv, "literal");
+    EXPECT_EQ(vfs.read_string("/literal.txt"_pv), "literal");
+    EXPECT_EQ(vfs.file_size("/literal.txt"_pv), 7);
+
+    // The const char* overload stores a view too, not a copy.
+    char buffer[16] = "char buffer";
+    vfs.mount_string_view("/buffer.txt"_pv, buffer);
+    buffer[0] = 'C';
+    EXPECT_EQ(vfs.read_string("/buffer.txt"_pv), "Char buffer");
+
+    // Null pointers are rejected instead of invoking UB in strlen().
+    EXPECT_THROW(
+        vfs.mount_string_view(
+            "/null.txt"_pv, static_cast<const char*>(nullptr)
+        ),
+        std::invalid_argument
+    );
+    EXPECT_THROW(
+        vfs.mount_string("/null.txt"_pv, static_cast<const char*>(nullptr)),
+        std::invalid_argument
+    );
 }
 
 TEST(VFS, MountSysFile)

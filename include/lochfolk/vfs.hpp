@@ -58,6 +58,21 @@ public:
 
     LOCHFOLK_API ~virtual_file_system();
 
+    /**
+     * @brief Mount a string constant
+     *
+     * The contents of @p str are copied (moved for the `std::string`
+     * overload); the virtual file system owns them. The source may therefore
+     * be a temporary, or be destroyed or modified once the call returns.
+     *
+     * The `const char*` overload requires a non-null pointer.
+     *
+     * @param p Absolute virtual path
+     * @param str Contents; copied by the call
+     * @param overwrite Replace an entry that already exists at @p p
+     *
+     * @throw std::invalid_argument if a null `const char*` is passed
+     */
     LOCHFOLK_API void mount_string(
         path_view p, std::string_view str, bool overwrite = true
     );
@@ -68,6 +83,41 @@ public:
     LOCHFOLK_API void mount_string(
         path_view p, std::string str, bool overwrite = true
     );
+
+    /**
+     * @brief Mount a string constant without copying it
+     *
+     * The virtual file system stores a non-owning view of @p str. The
+     * referenced buffer must stay alive and must not be resized or reallocated
+     * until the entry is replaced, removed, or the virtual file system is
+     * destroyed; otherwise reading the entry is undefined behavior. In-place
+     * writes to the referenced characters are allowed and are visible through
+     * the VFS (concurrently writing while reading is a data race). Prefer
+     * mount_string() unless the buffer is known to outlive the entry (for
+     * instance a string literal or a static buffer).
+     *
+     * `std::string` rvalues cannot be passed directly: the overloads taking
+     * `std::string&&` and `const std::string&&` are deleted, since the view
+     * would dangle immediately. A temporary wrapped in `std::string_view`
+     * cannot be detected and remains the caller's responsibility.
+     *
+     * The `const char*` overload requires a non-null pointer.
+     *
+     * @param p Absolute virtual path
+     * @param str Contents; not copied
+     * @param overwrite Replace an entry that already exists at @p p
+     *
+     * @throw std::invalid_argument if a null `const char*` is passed
+     */
+    LOCHFOLK_API void mount_string_view(
+        path_view p, std::string_view str, bool overwrite = true
+    );
+    LOCHFOLK_API void mount_string_view(
+        path_view p, const char* str, bool overwrite = true
+    );
+
+    void mount_string_view(path_view, std::string&&, bool = true) = delete;
+    void mount_string_view(path_view, const std::string&&, bool = true) = delete;
 
     LOCHFOLK_API void mount_file(
         path_view p, const std::filesystem::path& sys_path, bool overwrite = true

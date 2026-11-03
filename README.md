@@ -92,6 +92,23 @@ assert(!vfs.is_directory("/data/text/example.txt"_pv));
 }
 ```
 
+`mount_string()` copies the contents (moving for the `std::string` overload),
+so the source may be a temporary or be destroyed right after the call. If the
+buffer is guaranteed to outlive the mounted entry (a string literal or a static
+buffer, for example), `mount_string_view()` mounts a non-owning view and avoids
+the copy. The referenced buffer must not be resized, reallocated, or destroyed
+while the entry is mounted; in-place writes to the referenced characters are
+allowed and are visible through the VFS:
+
+```c++
+std::string contents = "123 456";
+vfs.mount_string_view("/data/text/view.txt"_pv, contents);
+
+// No copy was made: in-place changes are visible through the VFS.
+contents[0] = '4';
+assert(vfs.read_string("/data/text/view.txt"_pv) == "423 456");
+```
+
 ## Streams and File Handles
 
 `virtual_file_system::open()` returns an `ivfstream`, an input stream over a

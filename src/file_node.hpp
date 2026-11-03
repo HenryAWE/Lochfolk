@@ -92,6 +92,13 @@ namespace file_data
     class string_constant
     {
     public:
+        /**
+         * @brief Owning alternative (index 0) or non-owning alternative (index 1)
+         *
+         * The non-owning alternative is only created by
+         * `virtual_file_system::mount_string_view`; its constructor documents
+         * the lifetime requirement.
+         */
         using string_data = std::variant<
             std::string,
             std::string_view>;
@@ -101,6 +108,13 @@ namespace file_data
         string_constant(std::string str) noexcept
             : m_str_data(std::in_place_index<0>, std::move(str)) {}
 
+        /**
+         * @brief Stores a non-owning view of @p str
+         *
+         * Only reachable through `virtual_file_system::mount_string_view`,
+         * whose caller must keep the referenced buffer alive and must not
+         * resize or reallocate it for as long as the node exists.
+         */
         string_constant(std::string_view str) noexcept
             : m_str_data(std::in_place_index<1>, str) {}
 
