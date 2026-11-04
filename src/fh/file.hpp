@@ -9,7 +9,6 @@
 #pragma once
 
 #include <cstdint>
-#include <cstdio>
 #include <filesystem>
 #include <lochfolk/io.hpp>
 #include "platform.hpp"
@@ -54,8 +53,6 @@ private:
     void* m_handle = nullptr;
 #elif defined(LOCHFOLK_FH_POSIX)
     int m_fd = -1;
-#else
-    std::FILE* m_file = nullptr;
 #endif
     file_flag m_flags = file_flag::unknown;
 };
