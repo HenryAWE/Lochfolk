@@ -39,6 +39,9 @@ TEST(Path, Constructor)
 
 TEST(Path, IsAbsolute)
 {
+    // Absolute-ness is purely syntactic: it only depends on the leading
+    // separator. "." and ".." components are ordinary components and are
+    // resolved by lexically_normal(), not by this query (cf. std::filesystem).
     {
         lochfolk::path p;
         EXPECT_FALSE(p.is_absolute());
@@ -61,7 +64,7 @@ TEST(Path, IsAbsolute)
 
     {
         lochfolk::path p = "/data/.";
-        EXPECT_FALSE(p.is_absolute());
+        EXPECT_TRUE(p.is_absolute());
     }
 
     {
@@ -71,12 +74,27 @@ TEST(Path, IsAbsolute)
 
     {
         lochfolk::path p = "/data/..";
-        EXPECT_FALSE(p.is_absolute());
+        EXPECT_TRUE(p.is_absolute());
     }
 
     {
         lochfolk::path p = "/data/..a.txt";
         EXPECT_TRUE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "/a/../a/b";
+        EXPECT_TRUE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "/..";
+        EXPECT_TRUE(p.is_absolute());
+    }
+
+    {
+        lochfolk::path p = "..";
+        EXPECT_FALSE(p.is_absolute());
     }
 }
 
@@ -305,6 +323,64 @@ TEST(Path, IteratorForward)
             to_strs(p),
             vec
         );
+    }
+}
+
+TEST(Path, IteratorDotComponents)
+{
+    using namespace lochfolk::vfs_literals;
+
+    auto to_strs = [](const auto& p)
+    {
+        std::vector<std::string> result;
+        for(auto&& i : p)
+            result.push_back(i.string());
+        return result;
+    };
+
+    // Absolute paths with "." / ".." components are still absolute and their
+    // first component is the root directory, never an empty string. The
+    // components themselves are preserved: folding is lexically_normal()'s
+    // job, not the iterator's (matching std::filesystem::path).
+    {
+        lochfolk::path p = "/a/../a/b";
+
+        EXPECT_TRUE(p.is_absolute());
+        EXPECT_EQ(
+            to_strs(p),
+            (std::vector<std::string>{"/", "a", "..", "a", "b"})
+        );
+    }
+
+    {
+        lochfolk::path p = "/a/./b";
+
+        EXPECT_TRUE(p.is_absolute());
+        EXPECT_EQ(
+            to_strs(p),
+            (std::vector<std::string>{"/", "a", ".", "b"})
+        );
+    }
+
+    {
+        lochfolk::path p = "/..";
+
+        EXPECT_TRUE(p.is_absolute());
+        EXPECT_EQ(to_strs(p), (std::vector<std::string>{"/", ".."}));
+    }
+
+    {
+        lochfolk::path p = "/a/..";
+
+        EXPECT_TRUE(p.is_absolute());
+        EXPECT_EQ(to_strs(p), (std::vector<std::string>{"/", "a", ".."}));
+    }
+
+    {
+        lochfolk::path_view p = "/a/../b"_pv;
+
+        EXPECT_TRUE(p.is_absolute());
+        EXPECT_EQ(to_strs(p), (std::vector<std::string>{"/", "a", "..", "b"}));
     }
 }
 

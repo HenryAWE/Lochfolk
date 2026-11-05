@@ -77,7 +77,11 @@ path_view::const_iterator path_view::cbegin() const
 {
     if(empty())
         return cend();
-    if(is_absolute())
+
+    // The first component of an absolute path is the root directory itself.
+    // Do not use is_absolute() here: it is a syntactic query, but the layout
+    // of the components depends only on the leading separator.
+    if(m_str.front() == separator)
         return const_iterator(0, 1, *this);
 
     std::size_t len = m_str.find(separator);
@@ -96,34 +100,11 @@ bool path_view::empty() const noexcept
 
 bool path_view::is_absolute() const noexcept
 {
-    if(m_str.empty())
-        return false;
-
-    // Check if starts with separator
-    if(m_str[0] != separator)
-        return false;
-
-    // Check for . or .. components
-    std::size_t start = 0;
-    std::size_t end = m_str.find(separator);
-
-    while(end != std::string_view::npos)
-    {
-        std::string_view component = m_str.substr(start, end - start);
-
-        if(component == "." || component == "..")
-            return false;
-
-        start = end + 1;
-        end = m_str.find(separator, start);
-    }
-
-    // Check the last component after the last separator
-    std::string_view last_component = std::string_view(m_str).substr(start);
-    if(last_component == "." || last_component == "..")
-        return false;
-
-    return true;
+    // POSIX-style path format: a path is absolute if and only if it begins
+    // with the root directory separator. "." and ".." are ordinary pathname
+    // components for this query; resolving them is the job of
+    // lexically_normal() and of the path consumer (see std::filesystem).
+    return !m_str.empty() && m_str.front() == separator;
 }
 
 path_view path_view::parent_path() const noexcept

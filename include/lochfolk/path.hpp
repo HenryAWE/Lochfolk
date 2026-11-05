@@ -142,6 +142,13 @@ public:
     [[nodiscard]]
     LOCHFOLK_API bool empty() const noexcept;
 
+    /**
+     * @brief Whether the path begins with the root directory separator
+     *
+     * This is a purely syntactic query, matching std::filesystem::path:
+     * the presence of "." or ".." components does not make a path relative.
+     * Use lexically_normal() to resolve those components.
+     */
     [[nodiscard]]
     LOCHFOLK_API bool is_absolute() const noexcept;
 
@@ -320,6 +327,13 @@ public:
     [[nodiscard]]
     LOCHFOLK_API bool empty() const;
 
+    /**
+     * @brief Whether the path begins with the root directory separator
+     *
+     * This is a purely syntactic query, matching std::filesystem::path:
+     * the presence of "." or ".." components does not make a path relative.
+     * Use lexically_normal() to resolve those components.
+     */
     [[nodiscard]]
     LOCHFOLK_API bool is_absolute() const;
 
