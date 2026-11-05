@@ -59,6 +59,23 @@ public:
     LOCHFOLK_API ~virtual_file_system();
 
     /**
+     * @brief Path resolution
+     *
+     * Every member function interprets paths lexically, exactly like
+     * std::filesystem::path::lexically_normal(): "." and ".." components and
+     * redundant separators are resolved before the virtual tree is walked, and
+     * only absolute paths are accepted. A relative path never matches a node
+     * and cannot be mounted. The virtual tree contains no symbolic links, so
+     * no other resolution semantics are possible or needed. For example
+     * `exists("/a/./b")` and `exists("/a/../a/b")` both find the node "/a/b".
+     *
+     * Mount points are normalized the same way: `mount_string("/a/../b.txt")`
+     * mounts the file at "/b.txt". A mount point that does not name a file
+     * (the root directory, or a relative path) throws
+     * virtual_file_system::error.
+     */
+
+    /**
      * @brief Mount a string constant
      *
      * The contents of @p str are copied (moved for the `std::string`
@@ -72,6 +89,7 @@ public:
      * @param overwrite Replace an entry that already exists at @p p
      *
      * @throw std::invalid_argument if a null `const char*` is passed
+     * @throw virtual_file_system::error if @p p is not an absolute file path
      */
     LOCHFOLK_API void mount_string(
         path_view p, std::string_view str, bool overwrite = true
@@ -127,11 +145,27 @@ public:
      * @brief Recursively mount a directory
      *
      * @param dir Must be a directory
+     *
+     * @throw virtual_file_system::error if @p p is not an absolute path
      */
     LOCHFOLK_API void mount_dir(
         path_view p, const std::filesystem::path& dir, bool overwrite = true
     );
 
+    /**
+     * @brief Mount the contents of a ZIP archive
+     *
+     * Directory entries are ignored. The names of file entries are validated
+     * before anything is mounted: names that are absolute, empty, or contain
+     * an empty, "." or ".." component are rejected with
+     * virtual_file_system::error instead of escaping the mount point.
+     *
+     * @note If mounting fails for a reason other than an unsafe name (for
+     * example an entry cannot be read), entries already mounted are kept.
+     *
+     * @throw virtual_file_system::error if @p p is not an absolute path or an
+     * entry name is unsafe
+     */
     LOCHFOLK_API void mount_archive(
         path_view p, const std::filesystem::path& sys_path, bool overwrite = true
     );

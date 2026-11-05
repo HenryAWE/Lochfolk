@@ -15,7 +15,7 @@
 // IWYU pragma: end_exports
 
 #define LOCHFOLK_VERSION_MAJOR 0
-#define LOCHFOLK_VERSION_MINOR 2
+#define LOCHFOLK_VERSION_MINOR 3
 #define LOCHFOLK_VERSION_PATCH 0
 
 namespace lochfolk

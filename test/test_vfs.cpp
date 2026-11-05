@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iterator>
 #include <span>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -299,6 +300,91 @@ TEST(VFS, MountStringViewKeepsSource)
     );
 }
 
+TEST(VFS, LexicalPathResolution)
+{
+    using namespace lochfolk::vfs_literals;
+
+    lochfolk::virtual_file_system vfs;
+    vfs.mount_string("/a/b.txt"_pv, "content");
+    vfs.mount_string("/a/c.txt"_pv, "c");
+
+    // Paths are normalized lexically before the tree is walked, exactly like
+    // std::filesystem::path::lexically_normal(). The VFS has no symbolic
+    // links, so this resolution is exact - including ".." after a component
+    // that does not exist (on the host file system the kernel would require
+    // every component before ".." to exist).
+    EXPECT_TRUE(vfs.exists("/a/b.txt"_pv));
+    EXPECT_TRUE(vfs.exists("/a/./b.txt"_pv));
+    EXPECT_TRUE(vfs.exists("/a/../a/b.txt"_pv));
+    EXPECT_TRUE(vfs.exists("/a/missing/../b.txt"_pv));
+    EXPECT_TRUE(vfs.exists("/a/b.txt/."_pv));
+    EXPECT_TRUE(vfs.exists("/a/b.txt/.."_pv)); // resolves to the directory "/a"
+    EXPECT_TRUE(vfs.exists("/a/b.txt/../c.txt"_pv));
+    EXPECT_TRUE(vfs.is_directory("/a/./"_pv));
+
+    EXPECT_TRUE(vfs.exists("/."_pv));
+    EXPECT_TRUE(vfs.is_directory("/."_pv));
+    EXPECT_FALSE(vfs.exists("/a/../../b.txt"_pv)); // resolves to "/b.txt"
+    EXPECT_FALSE(vfs.exists("/a/../b.txt"_pv));    // resolves to "/b.txt"
+
+    EXPECT_EQ(vfs.read_string("/a/./b.txt"_pv), "content");
+    EXPECT_EQ(vfs.read_string("/a/../a/b.txt"_pv), "content");
+    EXPECT_EQ(vfs.read_string("/a/missing/../b.txt"_pv), "content");
+    EXPECT_EQ(vfs.file_size("/a/./b.txt"_pv), 7u);
+
+    {
+        auto fh = vfs.fopen("/a/../a/b.txt"_pv);
+        EXPECT_EQ(read_all(*fh), "content");
+    }
+}
+
+TEST(VFS, MountPathNormalization)
+{
+    using namespace lochfolk::vfs_literals;
+
+    lochfolk::virtual_file_system vfs;
+
+    // The mount point is normalized before it is created, so a non-normalized
+    // spelling cannot produce an empty-named or literal "."/".." node.
+    vfs.mount_string("/mnt/../root.txt"_pv, "root");
+    EXPECT_TRUE(vfs.exists("/root.txt"_pv));
+    EXPECT_FALSE(vfs.exists("/mnt"_pv));
+
+    vfs.mount_string("/a/./b.txt"_pv, "b");
+    EXPECT_TRUE(vfs.exists("/a/b.txt"_pv));
+    EXPECT_EQ(vfs.read_string("/a/./b.txt"_pv), "b");
+
+    // A trailing separator names the same file.
+    vfs.mount_string("/trailing/"_pv, "t");
+    EXPECT_TRUE(vfs.exists("/trailing"_pv));
+    EXPECT_FALSE(vfs.is_directory("/trailing"_pv));
+    EXPECT_EQ(vfs.read_string("/trailing"_pv), "t");
+
+    std::ostringstream listing;
+    vfs.list_files(listing);
+    EXPECT_EQ(listing.str().find("  - /"), std::string::npos) << listing.str();
+
+    // Relative paths and mount points that do not name a file are rejected
+    // instead of creating a malformed tree.
+    EXPECT_THROW(
+        vfs.mount_string("relative.txt"_pv, "x"),
+        lochfolk::virtual_file_system::error
+    );
+    EXPECT_THROW(
+        vfs.mount_string("/"_pv, "x"),
+        lochfolk::virtual_file_system::error
+    );
+    EXPECT_THROW(
+        vfs.mount_string("/a/.."_pv, "x"),
+        lochfolk::virtual_file_system::error
+    );
+
+    std::ostringstream after;
+    vfs.list_files(after);
+    EXPECT_EQ(after.str().find("relative.txt"), std::string::npos) << after.str();
+    EXPECT_EQ(after.str().find("  - /"), std::string::npos) << after.str();
+}
+
 TEST(VFS, MountSysFile)
 {
     using namespace lochfolk::vfs_literals;
@@ -390,6 +476,38 @@ TEST(VFS, MountSysDir)
     }
 }
 
+TEST(VFS, MountDirNormalization)
+{
+    namespace stdfs = std::filesystem;
+    using namespace lochfolk::vfs_literals;
+
+    const stdfs::path dir = "test_vfs_data/dir";
+    if(!stdfs::is_directory(dir))
+        GTEST_SKIP() << "test_vfs_data/dir not found";
+
+    lochfolk::virtual_file_system vfs;
+
+    // The base path is normalized like every other path.
+    vfs.mount_dir("/mnt/../data"_pv, dir);
+    EXPECT_TRUE(vfs.is_directory("/data"_pv));
+    EXPECT_EQ(vfs.read_string("/data/a.txt"_pv), "AAA\n");
+    EXPECT_EQ(vfs.read_string("/data/nested/b.txt"_pv), "BBB\n");
+    EXPECT_FALSE(vfs.exists("/mnt"_pv));
+
+    // Mounting a directory tree at the root is allowed, and a non-normalized
+    // spelling of the root is still the root.
+    lochfolk::virtual_file_system root_vfs;
+    root_vfs.mount_dir("/./"_pv, dir);
+    EXPECT_EQ(root_vfs.read_string("/a.txt"_pv), "AAA\n");
+    EXPECT_EQ(root_vfs.read_string("/nested/b.txt"_pv), "BBB\n");
+
+    lochfolk::virtual_file_system bad_vfs;
+    EXPECT_THROW(
+        bad_vfs.mount_dir("relative"_pv, dir),
+        lochfolk::virtual_file_system::error
+    );
+}
+
 TEST(VFS, MountZIPArchive)
 {
     if(!std::filesystem::exists("test_vfs_data/ar.zip"))
@@ -461,6 +579,64 @@ TEST(VFS, ReadEmptyEntryFromArchive)
     }
 }
 
+TEST(VFS, MountArchiveRejectsUnsafeEntries)
+{
+    namespace stdfs = std::filesystem;
+    using namespace lochfolk::vfs_literals;
+
+    const char* const archives[] = {
+        "test_vfs_data/evil_absolute.zip",
+        "test_vfs_data/evil_parent.zip",
+        "test_vfs_data/evil_dot.zip",
+    };
+
+    for(const char* archive : archives)
+    {
+        if(!stdfs::exists(archive))
+            GTEST_SKIP() << archive << " not found";
+
+        lochfolk::virtual_file_system vfs;
+        EXPECT_THROW(
+            vfs.mount_archive("/archive"_pv, archive),
+            lochfolk::virtual_file_system::error
+        ) << archive;
+
+        // The unsafe entry must not have been mounted, neither outside the
+        // mount point nor with a literal "."/".." component below it.
+        EXPECT_FALSE(vfs.exists("/evil_absolute.txt"_pv)) << archive;
+        EXPECT_FALSE(vfs.exists("/evil_parent.txt"_pv)) << archive;
+        EXPECT_FALSE(vfs.exists("/evil_dot.txt"_pv)) << archive;
+        EXPECT_FALSE(vfs.exists("/archive/evil_absolute.txt"_pv)) << archive;
+        EXPECT_FALSE(vfs.exists("/archive/evil_parent.txt"_pv)) << archive;
+        EXPECT_FALSE(vfs.exists("/archive/evil_dot.txt"_pv)) << archive;
+        EXPECT_FALSE(vfs.exists("/archive/../evil_parent.txt"_pv)) << archive;
+    }
+
+    // All entry names are validated before anything is mounted, so a rejected
+    // archive must not leave a partially populated mount point behind.
+    if(stdfs::exists("test_vfs_data/evil_mixed.zip"))
+    {
+        lochfolk::virtual_file_system vfs;
+        EXPECT_THROW(
+            vfs.mount_archive("/archive"_pv, "test_vfs_data/evil_mixed.zip"),
+            lochfolk::virtual_file_system::error
+        );
+        EXPECT_FALSE(vfs.exists("/archive"_pv));
+        EXPECT_FALSE(vfs.exists("/archive/good.txt"_pv));
+        EXPECT_FALSE(vfs.exists("/good.txt"_pv));
+    }
+
+    // A relative mount base is rejected as well.
+    if(stdfs::exists("test_vfs_data/ar.zip"))
+    {
+        lochfolk::virtual_file_system vfs;
+        EXPECT_THROW(
+            vfs.mount_archive("relative"_pv, "test_vfs_data/ar.zip"),
+            lochfolk::virtual_file_system::error
+        );
+    }
+}
+
 TEST(VFS, RemoveMissing)
 {
     using namespace lochfolk::vfs_literals;
@@ -503,6 +679,32 @@ TEST(VFS, RemoveRootSeparators)
     vfs.mount_string("/e.txt"_pv, "e");
     EXPECT_TRUE(vfs.remove("/"_pv));
     EXPECT_FALSE(vfs.exists("/e.txt"_pv));
+}
+
+TEST(VFS, RemoveDotComponents)
+{
+    using namespace lochfolk::vfs_literals;
+
+    lochfolk::virtual_file_system vfs;
+    vfs.mount_string("/a/b.txt"_pv, "b");
+    vfs.mount_string("/a/c.txt"_pv, "c");
+    vfs.mount_string("/keep.txt"_pv, "k");
+
+    EXPECT_TRUE(vfs.remove("/a/./b.txt"_pv));
+    EXPECT_FALSE(vfs.exists("/a/b.txt"_pv));
+
+    EXPECT_TRUE(vfs.remove("/a/../a/c.txt"_pv));
+    EXPECT_FALSE(vfs.exists("/a/c.txt"_pv));
+
+    // Missing components before ".." are resolved lexically, just like for
+    // lookups; the path still names "/a/missing.txt" and is not found.
+    EXPECT_FALSE(vfs.remove("/a/missing/../missing.txt"_pv));
+    EXPECT_TRUE(vfs.exists("/keep.txt"_pv));
+
+    // A path that normalizes to the root removes everything below it.
+    EXPECT_TRUE(vfs.remove("/a/.."_pv));
+    EXPECT_TRUE(vfs.exists("/"_pv));
+    EXPECT_FALSE(vfs.exists("/keep.txt"_pv));
 }
 
 TEST(VFS, MountEmptyDir)
@@ -981,6 +1183,9 @@ TEST(VFS, AccessContext)
     }
 
     EXPECT_EQ(ctx.to_fullpath("strings"_pv), "/data/strings"_pv);
+    EXPECT_EQ(ctx.to_fullpath("./strings"_pv), "/data/strings"_pv);
+    EXPECT_EQ(ctx.to_fullpath("/data/./strings"_pv), "/data/strings"_pv);
+    EXPECT_EQ(ctx.to_fullpath("/data/../info/info.txt"_pv), "/info/info.txt"_pv);
     EXPECT_EQ(ctx.to_fullpath("../info/info.txt"_pv), "/info/info.txt"_pv);
 
     EXPECT_TRUE(ctx.is_directory("strings"_pv));

@@ -253,6 +253,36 @@ namespace detail
     };
 } // namespace detail
 
+namespace detail
+{
+    /**
+     * @brief Normalize a path for virtual file system traversal
+     *
+     * Applies lexical normalization (resolving "." and ".." components) and
+     * removes redundant trailing separators, so that the result names a node
+     * unambiguously and filename() is meaningful. This matches the syntax-only
+     * resolution of std::filesystem: the virtual tree has no symbolic links,
+     * so resolving ".." lexically is exact.
+     */
+    path normalize_path(path_view p);
+
+    /**
+     * @brief Normalize and validate the base path of a directory/archive mount
+     *
+     * @throw virtual_file_system::error if @p p is empty or not absolute
+     */
+    path normalize_mount_base(path_view p);
+
+    /**
+     * @brief Normalize and validate the mount point of a file
+     *
+     * @throw virtual_file_system::error if @p p is empty, not absolute, or
+     * does not name a file (the root directory or a path with an empty
+     * filename)
+     */
+    path normalize_file_mount_path(path_view p);
+} // namespace detail
+
 detail::file_node* find_impl(detail::file_node& root, path_view p);
 
 const detail::file_node* find_impl(const detail::file_node& root, path_view p);
@@ -269,9 +299,13 @@ std::pair<const detail::file_node*, bool> mount_impl(
 )
 {
     static_assert(!std::same_as<T, file_data::directory>, "Cannot mount a directory");
-    assert(p.is_absolute());
-    auto* current = mkdir_impl(root, p.parent_path());
-    path_view filename = p.filename();
+
+    // Validate at runtime instead of asserting: in a release build an
+    // assertion would silently create a malformed tree (empty names, literal
+    // "."/".." nodes) for relative or non-normalized mount points.
+    const path mount_point = detail::normalize_file_mount_path(p);
+    auto* current = mkdir_impl(root, mount_point.view().parent_path());
+    const path_view filename = mount_point.view().filename();
 
     auto* dir = current->get_if<file_data::directory>();
     assert(dir);

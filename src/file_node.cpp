@@ -104,6 +104,49 @@ namespace detail
     }
 } // namespace detail
 
+namespace detail
+{
+    path normalize_path(path_view p)
+    {
+        path result = path(p).lexically_normal();
+
+        // A trailing separator does not name another node and makes
+        // filename() empty, which is never useful for traversal. Keep the
+        // root directory itself intact.
+        std::string text = result.string();
+        while(text.size() > 1 && text.back() == path::separator)
+            text.pop_back();
+
+        return path(std::move(text));
+    }
+
+    path normalize_mount_base(path_view p)
+    {
+        if(p.empty() || !p.is_absolute()) [[unlikely]]
+        {
+            throw virtual_file_system::error(
+                vfs_err_msg(p, " is not an absolute path")
+            );
+        }
+
+        return normalize_path(p);
+    }
+
+    path normalize_file_mount_path(path_view p)
+    {
+        path result = normalize_mount_base(p);
+
+        if(result == "/"_pv) [[unlikely]]
+        {
+            throw virtual_file_system::error(
+                vfs_err_msg(p, " does not name a file")
+            );
+        }
+
+        return result;
+    }
+} // namespace detail
+
 detail::file_node* find_impl(detail::file_node& root, path_view p)
 {
     return const_cast<detail::file_node*>(
@@ -115,11 +158,18 @@ const detail::file_node* find_impl(const detail::file_node& root, path_view p)
 {
     if(p.empty() || !p.is_absolute()) [[unlikely]]
         return nullptr;
-    if(p == "/"_pv)
+
+    // Resolve "." and ".." before walking the tree. The virtual file system
+    // is a pure namespace without symbolic links, so lexical resolution is
+    // exact; in particular "/a/x/../b" is "/a/b" even if "x" does not exist,
+    // unlike on the host file system where the kernel requires "x" to exist
+    // before applying "..".
+    const path normalized = detail::normalize_path(p);
+    if(normalized == "/"_pv)
         return &root;
 
     const auto* current = &root;
-    for(path_view subview : p)
+    for(path_view subview : normalized.view())
     {
         if(std::string_view(subview) == "/")
         {
@@ -145,8 +195,16 @@ detail::file_node* mkdir_impl(detail::file_node& root, path_view p)
 {
     assert(root.is_directory());
 
+    const path normalized = detail::normalize_path(p);
+    if(!normalized.is_absolute()) [[unlikely]]
+    {
+        throw virtual_file_system::error(
+            vfs_err_msg(p, " is not an absolute path")
+        );
+    }
+
     auto* current = &root;
-    for(path_view subview : p)
+    for(path_view subview : normalized.view())
     {
         if(std::string_view(subview) == "/")
             continue;

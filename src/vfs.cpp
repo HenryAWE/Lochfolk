@@ -10,6 +10,42 @@
 
 namespace lochfolk
 {
+namespace
+{
+    /**
+     * @brief Whether an archive entry name is safe to mount below the base
+     *
+     * Rejects absolute names and any empty, "." or ".." component. Such names
+     * would otherwise escape the mount point or create literal dot nodes via
+     * path composition (Zip-Slip).
+     */
+    bool is_safe_archive_entry(std::string_view name) noexcept
+    {
+        if(name.empty() || name.front() == path_view::separator)
+            return false;
+
+        std::size_t start = 0;
+        for(;;)
+        {
+            const std::size_t sep = name.find(path_view::separator, start);
+            const std::string_view component = name.substr(
+                start,
+                sep == std::string_view::npos
+                    ? std::string_view::npos
+                    : sep - start
+            );
+
+            if(component.empty() || component == "." || component == "..")
+                return false;
+
+            if(sep == std::string_view::npos)
+                return true;
+
+            start = sep + 1;
+        }
+    }
+} // namespace
+
 virtual_file_system::error::~error() = default;
 
 struct virtual_file_system::vfs_data
@@ -137,7 +173,7 @@ void virtual_file_system::mount_dir(
         throw error(stdfs_err_msg(dir, " is not a directory"));
     }
 
-    path base(p);
+    const path base = detail::normalize_mount_base(p);
     mkdir_impl(m_vfs_data->root, base);
 
     for(auto& i : stdfs::recursive_directory_iterator(dir))
@@ -161,10 +197,36 @@ void virtual_file_system::mount_archive(
     path_view p, const std::filesystem::path& sys_path, bool overwrite
 )
 {
+    // Validate the mount base before opening the archive.
+    const path base = detail::normalize_mount_base(p);
+
     std::shared_ptr ar = std::make_shared<zip_archive>();
     ar->open(sys_path);
 
-    path base(p);
+    // Validate every file entry name before mounting anything: rejecting an
+    // unsafe entry must not leave the virtual file system partially mounted.
+    if(ar->goto_first())
+    {
+        do
+        {
+            if(ar->current_is_dir())
+                continue;
+
+            auto entry = ar->open_current();
+            std::string_view filename = entry.filename();
+
+            if(!is_safe_archive_entry(filename)) [[unlikely]]
+            {
+                throw error(
+                    vfs_err_msg(
+                        path_view(filename),
+                        " is not a safe archive entry name"
+                    )
+                );
+            }
+        } while(ar->goto_next());
+    }
+
     mkdir_impl(m_vfs_data->root, base);
 
     if(!ar->goto_first())
@@ -215,18 +277,12 @@ bool virtual_file_system::remove(path_view p)
     if(p.empty() || !p.is_absolute()) [[unlikely]]
         return false;
 
-    // A path made up only of separators denotes the root directory, just like
-    // "/". find_impl() resolves e.g. "//" to the root as well, and taking
-    // substr() of the empty remainder used to throw std::out_of_range.
-    const std::string_view trimmed = [](path_view pv) -> std::string_view
-    {
-        std::string_view result(pv);
-        while(!result.empty() && result.back() == path_view::separator)
-            result.remove_suffix(1);
-        return result;
-    }(p);
+    // Resolve "." and ".." before manipulating the tree. A path that
+    // normalizes to the root directory (a separator-only path, or e.g.
+    // "/a/..") removes every entry below the root, just like "/".
+    const path normalized = detail::normalize_path(p);
 
-    if(trimmed.empty())
+    if(normalized == "/"_pv)
     {
         auto* root_dir = m_vfs_data->root.get_if<file_data::directory>();
         assert(root_dir);
@@ -235,20 +291,12 @@ bool virtual_file_system::remove(path_view p)
         return true;
     }
 
-    auto* parent = find_impl(m_vfs_data->root, p.parent_path());
+    auto* parent = find_impl(m_vfs_data->root, normalized.view().parent_path());
     if(!parent || !parent->is_directory())
         return false;
 
-    const std::string_view target_sv = [](std::string_view result)
-    {
-        std::size_t pos = result.rfind(path_view::separator);
-        if(pos == std::string_view::npos)
-            pos = 0;
-        return result.substr(pos + 1);
-    }(trimmed);
-
     auto* parent_dir = parent->get_if<file_data::directory>();
-    auto it = parent_dir->children().find(path_view(target_sv));
+    auto it = parent_dir->children().find(normalized.view().filename());
     if(it == parent_dir->children().end())
         return false;
 

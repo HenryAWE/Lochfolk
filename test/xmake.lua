@@ -40,4 +40,10 @@ target("test_vfs")
         end
 
         os.execv(python.program, { script, ar_name, archive_dir })
+
+        local unsafe_script = path.absolute(
+            os.scriptdir() .. "/script/make_unsafe_archives.py"
+        )
+        local unsafe_dir = path.absolute(target:targetdir() .. "/test_vfs_data")
+        os.execv(python.program, { unsafe_script, unsafe_dir })
     end)
