@@ -114,13 +114,6 @@ public:
      * mount_string() unless the buffer is known to outlive the entry (for
      * instance a string literal or a static buffer).
      *
-     * `std::string` rvalues cannot be passed directly: the overloads taking
-     * `std::string&&` and `const std::string&&` are deleted, since the view
-     * would dangle immediately. A temporary wrapped in `std::string_view`
-     * cannot be detected and remains the caller's responsibility.
-     *
-     * The `const char*` overload requires a non-null pointer.
-     *
      * @param p Absolute virtual path
      * @param str Contents; not copied
      * @param overwrite Replace an entry that already exists at @p p
@@ -135,7 +128,6 @@ public:
     );
 
     void mount_string_view(path_view, std::string&&, bool = true) = delete;
-    void mount_string_view(path_view, const std::string&&, bool = true) = delete;
 
     LOCHFOLK_API void mount_file(
         path_view p, const std::filesystem::path& sys_path, bool overwrite = true
