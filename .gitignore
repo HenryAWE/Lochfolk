@@ -1,6 +1,12 @@
-# Xmake cache
-.xmake/
+# Build trees
 build/
+out/
+
+# CMake user presets
+CMakeUserPresets.json
+
+# Legacy build cache from the previous build system
+.xmake/
 
 # MacOS Cache
 .DS_Store

@@ -168,6 +168,55 @@ fh->seek(-4, lochfolk::whence::end);
   `virtual_file_system::error` for invalid virtual paths, and as
   `std::system_error` when a host file cannot be opened.
 
+## Building
+
+The build system is CMake; the build files of the previous build system have been removed.
+
+### Requirements
+
+- CMake >= 3.20
+- A C++20 compiler
+- Ninja (recommended) or Make
+- Python 3 (only needed when the tests are enabled; used to generate the test archives)
+
+### Dependencies
+
+minizip-ng 4.2.2 is downloaded automatically by CMake (via `FetchContent`) and
+built without OpenSSL or WinZip-AES support, so no OpenSSL installation is
+required. zlib comes from the system on Linux and macOS (on Windows it is
+fetched automatically). GoogleTest is taken from the system by default; with
+`-Dlochfolk_prefer_system_gtest=OFF` it is fetched instead (googletest v1.14.0).
+
+### Quickstart
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+Static libraries are built by default; pass `-DBUILD_SHARED_LIBS=ON` to build a
+shared library instead.
+
+### Installing
+
+```sh
+cmake --install build --prefix /path/to/prefix
+```
+
+Public headers are installed under `<prefix>/include/lochfolk/` and the library
+under `<prefix>/lib/` (on Windows the shared library is
+`<prefix>/bin/lochfolk.dll`).
+
+### Options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `BUILD_SHARED_LIBS` | `OFF` | Build a shared library instead of a static one. |
+| `BUILD_TESTING` | `ON` | Build the tests. |
+| `lochfolk_prefer_system_gtest` | `ON` | Use the system GoogleTest; `OFF` fetches googletest v1.14.0. |
+| `lochfolk_enable_asan` | `OFF` | Enable AddressSanitizer (GCC/Clang only; unsupported on MSVC). |
+
 ## Acknowledgments
 This library uses the following third party libraries:
 
