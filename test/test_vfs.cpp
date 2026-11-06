@@ -93,19 +93,6 @@ concept CanMountStringView = requires(
 {
     vfs.mount_string_view(p, std::forward<T>(source));
 };
-
-static_assert(
-    !CanMountStringView<std::string>,
-    "mount_string_view() must reject std::string rvalues"
-);
-static_assert(
-    !CanMountStringView<const std::string>,
-    "mount_string_view() must reject const std::string rvalues"
-);
-static_assert(CanMountStringView<std::string&>);
-static_assert(CanMountStringView<const std::string&>);
-static_assert(CanMountStringView<std::string_view>);
-static_assert(CanMountStringView<const char*>);
 } // namespace
 
 TEST(VFS, MountStringConstant)

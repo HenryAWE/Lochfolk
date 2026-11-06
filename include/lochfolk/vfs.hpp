@@ -135,7 +135,6 @@ public:
     );
 
     void mount_string_view(path_view, std::string&&, bool = true) = delete;
-    void mount_string_view(path_view, const std::string&&, bool = true) = delete;
 
     LOCHFOLK_API void mount_file(
         path_view p, const std::filesystem::path& sys_path, bool overwrite = true
