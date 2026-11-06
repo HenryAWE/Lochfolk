@@ -87,11 +87,19 @@ FetchContent_Declare(
 # Always build minizip-ng as a static library, even when Lochfolk itself is
 # shared: it is linked into liblochfolk.so / lochfolk.dll and must not become a
 # public runtime dependency.
+#
+# minizip-ng forcibly disables the global BUILD_TESTING cache variable when it
+# fetches zlib-ng (it does that on Windows, where zlib is not provided by the
+# system). Preserve Lochfolk's own value across the subproject configuration.
+set(_lochfolk_build_testing ${BUILD_TESTING})
 set(_lochfolk_build_shared_libs ${BUILD_SHARED_LIBS})
 set(BUILD_SHARED_LIBS OFF)
 FetchContent_MakeAvailable(minizip_ng)
 set(BUILD_SHARED_LIBS ${_lochfolk_build_shared_libs})
+set(BUILD_TESTING ${_lochfolk_build_testing} CACHE BOOL
+    "Build the testing tree." FORCE)
 unset(_lochfolk_build_shared_libs)
+unset(_lochfolk_build_testing)
 
 # Allow the static minizip-ng objects to be linked into a shared Lochfolk.
 set_target_properties(minizip PROPERTIES POSITION_INDEPENDENT_CODE ON)
