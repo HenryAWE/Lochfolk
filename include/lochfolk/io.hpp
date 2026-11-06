@@ -130,15 +130,18 @@ enum class whence : int
  */
 class LOCHFOLK_API file_handle
 {
+    // Do not repeat LOCHFOLK_API on members: the class-level annotation
+    // already exports them, and MSVC rejects member-level dllexport inside a
+    // dll interface class with C2487.
 protected:
-    LOCHFOLK_API file_handle() = default;
+    file_handle() = default;
 
 public:
-    LOCHFOLK_API file_handle(const file_handle&) = delete;
+    file_handle(const file_handle&) = delete;
 
     file_handle& operator=(const file_handle&) = delete;
 
-    LOCHFOLK_API virtual ~file_handle();
+    virtual ~file_handle();
 
     /**
      * @brief Access modes granted by this handle
