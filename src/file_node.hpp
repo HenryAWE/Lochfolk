@@ -24,19 +24,10 @@ struct string_compare
 {
     using is_transparent = void;
 
-    bool operator()(std::string_view lhs, std::string_view rhs) const
+    template <typename T, typename U>
+    bool operator()(const T& lhs, const U& rhs) const
     {
-        return lhs < rhs;
-    }
-
-    bool operator()(path_view lhs, std::string_view rhs) const
-    {
-        return std::string_view(lhs) < rhs;
-    }
-
-    bool operator()(std::string_view lhs, path_view rhs) const
-    {
-        return lhs < std::string_view(rhs);
+        return std::string_view(lhs) < std::string_view(rhs);
     }
 };
 

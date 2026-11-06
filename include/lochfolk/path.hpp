@@ -22,8 +22,13 @@ public:
     constexpr path_view() noexcept = default;
     constexpr path_view(const path_view&) noexcept = default;
 
+    template <std::size_t N>
+    constexpr path_view(const char (&str)[N])
+        : m_str(str, N - 1)
+    {}
+
     template <std::convertible_to<std::string_view> StringView>
-    constexpr explicit path_view(StringView&& sv)
+    constexpr path_view(StringView&& sv)
         : m_str(static_cast<std::string_view>(sv))
     {}
 
@@ -207,6 +212,18 @@ public:
         return lhs == rhs.view();
     }
 
+    template <std::convertible_to<std::string_view> StringView>
+    friend bool operator==(const path& lhs, const StringView& rhs) noexcept
+    {
+        return std::string_view(lhs) == rhs;
+    }
+
+    template <std::convertible_to<std::string_view> StringView>
+    friend bool operator==(const StringView& lhs, const path& rhs) noexcept
+    {
+        return lhs == std::string_view(rhs);
+    }
+
     [[nodiscard]]
     const char* c_str() const
     {
@@ -348,29 +365,12 @@ public:
 
     LOCHFOLK_API path& append(path_view p);
 
-    path& append(std::string_view p)
-    {
-        return append(path_view(p));
-    }
-
     path& operator/=(path_view p)
     {
         return append(p);
     }
 
-    path& operator/=(std::string_view p)
-    {
-        return append(p);
-    }
-
     friend path operator/(const path& lhs, path_view rhs)
-    {
-        path result(lhs);
-        result /= rhs;
-        return result;
-    }
-
-    friend path operator/(const path& lhs, std::string_view rhs)
     {
         path result(lhs);
         result /= rhs;

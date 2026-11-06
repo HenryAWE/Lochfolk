@@ -76,23 +76,6 @@ std::string read_all(
     auto fh = vfs.fopen(p, flags);
     return read_all(*fh);
 }
-
-/**
- * @brief Whether mount_string_view() accepts a source of type @p T
- *
- * The deleted overloads must reject `std::string` rvalues, for which the
- * stored view would dangle as soon as the full expression ends, while the
- * safe sources stay accepted.
- */
-template <typename T>
-concept CanMountStringView = requires(
-    lochfolk::virtual_file_system& vfs,
-    lochfolk::path_view p,
-    T&& source
-)
-{
-    vfs.mount_string_view(p, std::forward<T>(source));
-};
 } // namespace
 
 TEST(VFS, MountStringConstant)
@@ -101,22 +84,22 @@ TEST(VFS, MountStringConstant)
 
     lochfolk::virtual_file_system vfs;
 
-    vfs.mount_string("/data/text/example.txt"_pv, "123 456");
+    vfs.mount_string("/data/text/example.txt", "123 456");
     vfs.list_files(std::cerr);
 
-    EXPECT_TRUE(vfs.exists("/"_pv));
-    EXPECT_TRUE(vfs.is_directory("/"_pv));
-    EXPECT_TRUE(vfs.exists("/data"_pv));
-    EXPECT_TRUE(vfs.is_directory("/data"_pv));
-    EXPECT_TRUE(vfs.exists("/data/text"_pv));
-    EXPECT_TRUE(vfs.is_directory("/data/text"_pv));
-    EXPECT_TRUE(vfs.exists("/data/text/example.txt"_pv));
-    EXPECT_FALSE(vfs.is_directory("/data/text/example.txt"_pv));
+    EXPECT_TRUE(vfs.exists("/"));
+    EXPECT_TRUE(vfs.is_directory("/"));
+    EXPECT_TRUE(vfs.exists("/data"));
+    EXPECT_TRUE(vfs.is_directory("/data"));
+    EXPECT_TRUE(vfs.exists("/data/text"));
+    EXPECT_TRUE(vfs.is_directory("/data/text"));
+    EXPECT_TRUE(vfs.exists("/data/text/example.txt"));
+    EXPECT_FALSE(vfs.is_directory("/data/text/example.txt"));
 
-    EXPECT_EQ(vfs.file_size("/data/text/example.txt"_pv), 7);
+    EXPECT_EQ(vfs.file_size("/data/text/example.txt"), 7);
 
     {
-        auto fh = vfs.fopen("/data/text/example.txt"_pv);
+        auto fh = vfs.fopen("/data/text/example.txt");
 
         EXPECT_TRUE(fh->readable());
         EXPECT_FALSE(fh->writable());
@@ -125,14 +108,14 @@ TEST(VFS, MountStringConstant)
     }
 
     {
-        std::string str = vfs.read_string("/data/text/example.txt"_pv);
+        std::string str = vfs.read_string("/data/text/example.txt");
 
         EXPECT_EQ(str, "123 456");
     }
 
     // Random access
     {
-        auto fh = vfs.fopen("/data/text/example.txt"_pv);
+        auto fh = vfs.fopen("/data/text/example.txt");
 
         std::byte buf[3];
         EXPECT_EQ(fh->read(std::span<std::byte>(buf)).bytes_transferred(), 3);
@@ -152,14 +135,14 @@ TEST(VFS, MountStringConstant)
         EXPECT_FALSE(fh->seek(-8, lochfolk::whence::begin));
     }
 
-    vfs.mount_string("/data/text/example.txt"_pv, std::string("1013"));
-    EXPECT_TRUE(vfs.exists("/data/text/example.txt"_pv));
-    EXPECT_FALSE(vfs.is_directory("/data/text/example.txt"_pv));
+    vfs.mount_string("/data/text/example.txt", std::string("1013"));
+    EXPECT_TRUE(vfs.exists("/data/text/example.txt"));
+    EXPECT_FALSE(vfs.is_directory("/data/text/example.txt"));
 
-    EXPECT_EQ(read_all(vfs, "/data/text/example.txt"_pv), "1013");
+    EXPECT_EQ(read_all(vfs, "/data/text/example.txt"), "1013");
 
     {
-        auto vfss = vfs.open("/data/text/example.txt"_pv);
+        auto vfss = vfs.open("/data/text/example.txt");
 
         int v = 0;
         vfss >> v;
@@ -168,7 +151,7 @@ TEST(VFS, MountStringConstant)
 
     // Move construction of the stream
     {
-        auto src = vfs.open("/data/text/example.txt"_pv);
+        auto src = vfs.open("/data/text/example.txt");
         EXPECT_TRUE(src.has_buffer());
 
         auto vfss = std::move(src);
@@ -182,17 +165,17 @@ TEST(VFS, MountStringConstant)
 
     // An open handle keeps a snapshot of the mounted contents
     {
-        vfs.mount_string("/data/text/example.txt"_pv, std::string(64, 'A'));
-        auto fh = vfs.fopen("/data/text/example.txt"_pv);
+        vfs.mount_string("/data/text/example.txt", std::string(64, 'A'));
+        auto fh = vfs.fopen("/data/text/example.txt");
 
-        vfs.mount_string("/data/text/example.txt"_pv, std::string(64, 'B'));
+        vfs.mount_string("/data/text/example.txt", std::string(64, 'B'));
 
         EXPECT_EQ(read_all(*fh), std::string(64, 'A'));
     }
 
     try
     {
-        (void)vfs.fopen("/data/not/found"_pv);
+        (void)vfs.fopen("/data/not/found");
         FAIL() << "fopen() of a missing path should throw";
     }
     catch(const lochfolk::virtual_file_system::error& e)
@@ -200,10 +183,10 @@ TEST(VFS, MountStringConstant)
         EXPECT_STREQ(e.what(), "\"/data/not/found\" is not found");
     }
 
-    EXPECT_TRUE(vfs.remove("/data/text/example.txt"_pv));
-    EXPECT_FALSE(vfs.remove("/data/text/example.txt"_pv));
-    EXPECT_FALSE(vfs.exists("/data/text/example.txt"_pv));
-    EXPECT_THROW(vfs.fopen("/data/text/example.txt"_pv), lochfolk::virtual_file_system::error);
+    EXPECT_TRUE(vfs.remove("/data/text/example.txt"));
+    EXPECT_FALSE(vfs.remove("/data/text/example.txt"));
+    EXPECT_FALSE(vfs.exists("/data/text/example.txt"));
+    EXPECT_THROW(vfs.fopen("/data/text/example.txt"), lochfolk::virtual_file_system::error);
 }
 
 TEST(VFS, MountStringCopiesSource)
@@ -216,28 +199,28 @@ TEST(VFS, MountStringCopiesSource)
     // storing views instead of copies would be a use-after-free here.
     {
         char local[64] = "local buffer";
-        vfs.mount_string("/local.txt"_pv, local);
+        vfs.mount_string("/local.txt", local);
         local[0] = 'X';
     }
 
     {
         std::string source = "a source string long enough to be heap allocated";
 
-        vfs.mount_string("/view.txt"_pv, std::string_view(source));
+        vfs.mount_string("/view.txt", std::string_view(source));
         source.assign("changed after mounting");
     }
 
     {
         std::string source = "moved source string";
-        vfs.mount_string("/moved.txt"_pv, std::move(source));
+        vfs.mount_string("/moved.txt", std::move(source));
     }
 
-    EXPECT_EQ(vfs.read_string("/local.txt"_pv), "local buffer");
+    EXPECT_EQ(vfs.read_string("/local.txt"), "local buffer");
     EXPECT_EQ(
-        vfs.read_string("/view.txt"_pv),
+        vfs.read_string("/view.txt"),
         "a source string long enough to be heap allocated"
     );
-    EXPECT_EQ(vfs.read_string("/moved.txt"_pv), "moved source string");
+    EXPECT_EQ(vfs.read_string("/moved.txt"), "moved source string");
 }
 
 TEST(VFS, MountStringViewKeepsSource)
@@ -247,42 +230,42 @@ TEST(VFS, MountStringViewKeepsSource)
     std::string storage = "view content";
     lochfolk::virtual_file_system vfs;
 
-    vfs.mount_string_view("/view.txt"_pv, storage);
+    vfs.mount_string_view("/view.txt", storage);
 
-    EXPECT_EQ(vfs.file_size("/view.txt"_pv), 12);
-    EXPECT_EQ(vfs.read_string("/view.txt"_pv), "view content");
+    EXPECT_EQ(vfs.file_size("/view.txt"), 12);
+    EXPECT_EQ(vfs.read_string("/view.txt"), "view content");
 
     // No copy is made: an in-place change of the source is visible.
     storage[0] = 'V';
-    EXPECT_EQ(vfs.read_string("/view.txt"_pv), "View content");
+    EXPECT_EQ(vfs.read_string("/view.txt"), "View content");
 
     // Overwrite semantics are the same as for mount_string().
-    vfs.mount_string_view("/view.txt"_pv, std::string_view("replacement"), false);
-    EXPECT_EQ(vfs.read_string("/view.txt"_pv), "View content");
+    vfs.mount_string_view("/view.txt", std::string_view("replacement"), false);
+    EXPECT_EQ(vfs.read_string("/view.txt"), "View content");
 
-    vfs.mount_string_view("/view.txt"_pv, std::string_view("replacement"));
-    EXPECT_EQ(vfs.read_string("/view.txt"_pv), "replacement");
+    vfs.mount_string_view("/view.txt", std::string_view("replacement"));
+    EXPECT_EQ(vfs.read_string("/view.txt"), "replacement");
 
     // A string literal has static storage duration, so a view of it is safe.
-    vfs.mount_string_view("/literal.txt"_pv, "literal");
-    EXPECT_EQ(vfs.read_string("/literal.txt"_pv), "literal");
-    EXPECT_EQ(vfs.file_size("/literal.txt"_pv), 7);
+    vfs.mount_string_view("/literal.txt", "literal");
+    EXPECT_EQ(vfs.read_string("/literal.txt"), "literal");
+    EXPECT_EQ(vfs.file_size("/literal.txt"), 7);
 
     // The const char* overload stores a view too, not a copy.
     char buffer[16] = "char buffer";
-    vfs.mount_string_view("/buffer.txt"_pv, buffer);
+    vfs.mount_string_view("/buffer.txt", buffer);
     buffer[0] = 'C';
-    EXPECT_EQ(vfs.read_string("/buffer.txt"_pv), "Char buffer");
+    EXPECT_EQ(vfs.read_string("/buffer.txt"), "Char buffer");
 
     // Null pointers are rejected instead of invoking UB in strlen().
     EXPECT_THROW(
         vfs.mount_string_view(
-            "/null.txt"_pv, static_cast<const char*>(nullptr)
+            "/null.txt", static_cast<const char*>(nullptr)
         ),
         std::invalid_argument
     );
     EXPECT_THROW(
-        vfs.mount_string("/null.txt"_pv, static_cast<const char*>(nullptr)),
+        vfs.mount_string("/null.txt", static_cast<const char*>(nullptr)),
         std::invalid_argument
     );
 }
@@ -292,35 +275,35 @@ TEST(VFS, LexicalPathResolution)
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_string("/a/b.txt"_pv, "content");
-    vfs.mount_string("/a/c.txt"_pv, "c");
+    vfs.mount_string("/a/b.txt", "content");
+    vfs.mount_string("/a/c.txt", "c");
 
     // Paths are normalized lexically before the tree is walked, exactly like
     // std::filesystem::path::lexically_normal(). The VFS has no symbolic
     // links, so this resolution is exact - including ".." after a component
     // that does not exist (on the host file system the kernel would require
     // every component before ".." to exist).
-    EXPECT_TRUE(vfs.exists("/a/b.txt"_pv));
-    EXPECT_TRUE(vfs.exists("/a/./b.txt"_pv));
-    EXPECT_TRUE(vfs.exists("/a/../a/b.txt"_pv));
-    EXPECT_TRUE(vfs.exists("/a/missing/../b.txt"_pv));
-    EXPECT_TRUE(vfs.exists("/a/b.txt/."_pv));
-    EXPECT_TRUE(vfs.exists("/a/b.txt/.."_pv)); // resolves to the directory "/a"
-    EXPECT_TRUE(vfs.exists("/a/b.txt/../c.txt"_pv));
-    EXPECT_TRUE(vfs.is_directory("/a/./"_pv));
+    EXPECT_TRUE(vfs.exists("/a/b.txt"));
+    EXPECT_TRUE(vfs.exists("/a/./b.txt"));
+    EXPECT_TRUE(vfs.exists("/a/../a/b.txt"));
+    EXPECT_TRUE(vfs.exists("/a/missing/../b.txt"));
+    EXPECT_TRUE(vfs.exists("/a/b.txt/."));
+    EXPECT_TRUE(vfs.exists("/a/b.txt/..")); // resolves to the directory "/a"
+    EXPECT_TRUE(vfs.exists("/a/b.txt/../c.txt"));
+    EXPECT_TRUE(vfs.is_directory("/a/./"));
 
-    EXPECT_TRUE(vfs.exists("/."_pv));
-    EXPECT_TRUE(vfs.is_directory("/."_pv));
-    EXPECT_FALSE(vfs.exists("/a/../../b.txt"_pv)); // resolves to "/b.txt"
-    EXPECT_FALSE(vfs.exists("/a/../b.txt"_pv));    // resolves to "/b.txt"
+    EXPECT_TRUE(vfs.exists("/."));
+    EXPECT_TRUE(vfs.is_directory("/."));
+    EXPECT_FALSE(vfs.exists("/a/../../b.txt")); // resolves to "/b.txt"
+    EXPECT_FALSE(vfs.exists("/a/../b.txt"));    // resolves to "/b.txt"
 
-    EXPECT_EQ(vfs.read_string("/a/./b.txt"_pv), "content");
-    EXPECT_EQ(vfs.read_string("/a/../a/b.txt"_pv), "content");
-    EXPECT_EQ(vfs.read_string("/a/missing/../b.txt"_pv), "content");
-    EXPECT_EQ(vfs.file_size("/a/./b.txt"_pv), 7u);
+    EXPECT_EQ(vfs.read_string("/a/./b.txt"), "content");
+    EXPECT_EQ(vfs.read_string("/a/../a/b.txt"), "content");
+    EXPECT_EQ(vfs.read_string("/a/missing/../b.txt"), "content");
+    EXPECT_EQ(vfs.file_size("/a/./b.txt"), 7u);
 
     {
-        auto fh = vfs.fopen("/a/../a/b.txt"_pv);
+        auto fh = vfs.fopen("/a/../a/b.txt");
         EXPECT_EQ(read_all(*fh), "content");
     }
 }
@@ -333,19 +316,19 @@ TEST(VFS, MountPathNormalization)
 
     // The mount point is normalized before it is created, so a non-normalized
     // spelling cannot produce an empty-named or literal "."/".." node.
-    vfs.mount_string("/mnt/../root.txt"_pv, "root");
-    EXPECT_TRUE(vfs.exists("/root.txt"_pv));
-    EXPECT_FALSE(vfs.exists("/mnt"_pv));
+    vfs.mount_string("/mnt/../root.txt", "root");
+    EXPECT_TRUE(vfs.exists("/root.txt"));
+    EXPECT_FALSE(vfs.exists("/mnt"));
 
-    vfs.mount_string("/a/./b.txt"_pv, "b");
-    EXPECT_TRUE(vfs.exists("/a/b.txt"_pv));
-    EXPECT_EQ(vfs.read_string("/a/./b.txt"_pv), "b");
+    vfs.mount_string("/a/./b.txt", "b");
+    EXPECT_TRUE(vfs.exists("/a/b.txt"));
+    EXPECT_EQ(vfs.read_string("/a/./b.txt"), "b");
 
     // A trailing separator names the same file.
-    vfs.mount_string("/trailing/"_pv, "t");
-    EXPECT_TRUE(vfs.exists("/trailing"_pv));
-    EXPECT_FALSE(vfs.is_directory("/trailing"_pv));
-    EXPECT_EQ(vfs.read_string("/trailing"_pv), "t");
+    vfs.mount_string("/trailing/", "t");
+    EXPECT_TRUE(vfs.exists("/trailing"));
+    EXPECT_FALSE(vfs.is_directory("/trailing"));
+    EXPECT_EQ(vfs.read_string("/trailing"), "t");
 
     std::ostringstream listing;
     vfs.list_files(listing);
@@ -354,15 +337,15 @@ TEST(VFS, MountPathNormalization)
     // Relative paths and mount points that do not name a file are rejected
     // instead of creating a malformed tree.
     EXPECT_THROW(
-        vfs.mount_string("relative.txt"_pv, "x"),
+        vfs.mount_string("relative.txt", "x"),
         lochfolk::virtual_file_system::error
     );
     EXPECT_THROW(
-        vfs.mount_string("/"_pv, "x"),
+        vfs.mount_string("/", "x"),
         lochfolk::virtual_file_system::error
     );
     EXPECT_THROW(
-        vfs.mount_string("/a/.."_pv, "x"),
+        vfs.mount_string("/a/..", "x"),
         lochfolk::virtual_file_system::error
     );
 
@@ -378,23 +361,23 @@ TEST(VFS, MountSysFile)
 
     lochfolk::virtual_file_system vfs;
 
-    vfs.mount_file("/text/example.txt"_pv, "test_vfs_data/example.txt");
+    vfs.mount_file("/text/example.txt", "test_vfs_data/example.txt");
     vfs.list_files(std::cerr);
 
-    EXPECT_TRUE(vfs.exists("/"_pv));
-    EXPECT_TRUE(vfs.is_directory("/"_pv));
-    EXPECT_TRUE(vfs.exists("/text"_pv));
-    EXPECT_TRUE(vfs.is_directory("/text"_pv));
-    EXPECT_TRUE(vfs.exists("/text/example.txt"_pv));
-    EXPECT_FALSE(vfs.is_directory("/text/example.txt"_pv));
+    EXPECT_TRUE(vfs.exists("/"));
+    EXPECT_TRUE(vfs.is_directory("/"));
+    EXPECT_TRUE(vfs.exists("/text"));
+    EXPECT_TRUE(vfs.is_directory("/text"));
+    EXPECT_TRUE(vfs.exists("/text/example.txt"));
+    EXPECT_FALSE(vfs.is_directory("/text/example.txt"));
 
     EXPECT_EQ(
-        vfs.file_size("/text/example.txt"_pv),
+        vfs.file_size("/text/example.txt"),
         static_cast<std::uint64_t>(std::filesystem::file_size("test_vfs_data/example.txt"))
     );
 
     {
-        auto fh = vfs.fopen("/text/example.txt"_pv);
+        auto fh = vfs.fopen("/text/example.txt");
 
         EXPECT_TRUE(fh->readable());
         EXPECT_FALSE(fh->writable());
@@ -402,13 +385,13 @@ TEST(VFS, MountSysFile)
     }
 
     {
-        std::string str = vfs.read_string("/text/example.txt"_pv);
+        std::string str = vfs.read_string("/text/example.txt");
 
         EXPECT_EQ(str, "1013\n");
     }
 
     {
-        auto vfss = vfs.open("/text/example.txt"_pv);
+        auto vfss = vfs.open("/text/example.txt");
 
         int date = 0;
         vfss >> date;
@@ -416,15 +399,15 @@ TEST(VFS, MountSysFile)
     }
 
     {
-        auto vfss = vfs.open("/text/example.txt"_pv);
+        auto vfss = vfs.open("/text/example.txt");
 
         char buf[4];
         vfss.read(buf, 4);
         EXPECT_EQ(std::string(buf, 4), "1013");
     }
 
-    EXPECT_TRUE(vfs.remove("/text/example.txt"_pv));
-    EXPECT_FALSE(vfs.exists("/text/example.txt"_pv));
+    EXPECT_TRUE(vfs.remove("/text/example.txt"));
+    EXPECT_FALSE(vfs.exists("/text/example.txt"));
     // Won't remove the actual system file
     EXPECT_TRUE(std::filesystem::exists("test_vfs_data/example.txt"));
 }
@@ -435,19 +418,19 @@ TEST(VFS, MountSysDir)
 
     lochfolk::virtual_file_system vfs;
 
-    vfs.mount_dir("/data"_pv, "test_vfs_data/dir/");
-    vfs.mount_file("/data/example.txt"_pv, "test_vfs_data/example.txt");
+    vfs.mount_dir("/data", "test_vfs_data/dir/");
+    vfs.mount_file("/data/example.txt", "test_vfs_data/example.txt");
     vfs.list_files(std::cerr);
 
-    EXPECT_TRUE(vfs.is_directory("/data/nested"_pv));
+    EXPECT_TRUE(vfs.is_directory("/data/nested"));
 
-    EXPECT_EQ(read_all(vfs, "/data/a.txt"_pv), "AAA\n");
-    EXPECT_EQ(read_all(vfs, "/data/nested/b.txt"_pv), "BBB\n");
-    EXPECT_EQ(vfs.read_string("/data/nested/b.txt"_pv), "BBB\n");
-    EXPECT_EQ(read_all(vfs, "/data/example.txt"_pv), "1013\n");
+    EXPECT_EQ(read_all(vfs, "/data/a.txt"), "AAA\n");
+    EXPECT_EQ(read_all(vfs, "/data/nested/b.txt"), "BBB\n");
+    EXPECT_EQ(vfs.read_string("/data/nested/b.txt"), "BBB\n");
+    EXPECT_EQ(read_all(vfs, "/data/example.txt"), "1013\n");
 
     {
-        auto vfss = vfs.open("/data/a.txt"_pv);
+        auto vfss = vfs.open("/data/a.txt");
 
         std::string str;
         vfss >> str;
@@ -455,7 +438,7 @@ TEST(VFS, MountSysDir)
     }
 
     {
-        auto vfss = vfs.open("/data/nested/b.txt"_pv);
+        auto vfss = vfs.open("/data/nested/b.txt");
 
         std::string str;
         vfss >> str;
@@ -475,22 +458,22 @@ TEST(VFS, MountDirNormalization)
     lochfolk::virtual_file_system vfs;
 
     // The base path is normalized like every other path.
-    vfs.mount_dir("/mnt/../data"_pv, dir);
-    EXPECT_TRUE(vfs.is_directory("/data"_pv));
-    EXPECT_EQ(vfs.read_string("/data/a.txt"_pv), "AAA\n");
-    EXPECT_EQ(vfs.read_string("/data/nested/b.txt"_pv), "BBB\n");
-    EXPECT_FALSE(vfs.exists("/mnt"_pv));
+    vfs.mount_dir("/mnt/../data", dir);
+    EXPECT_TRUE(vfs.is_directory("/data"));
+    EXPECT_EQ(vfs.read_string("/data/a.txt"), "AAA\n");
+    EXPECT_EQ(vfs.read_string("/data/nested/b.txt"), "BBB\n");
+    EXPECT_FALSE(vfs.exists("/mnt"));
 
     // Mounting a directory tree at the root is allowed, and a non-normalized
     // spelling of the root is still the root.
     lochfolk::virtual_file_system root_vfs;
-    root_vfs.mount_dir("/./"_pv, dir);
-    EXPECT_EQ(root_vfs.read_string("/a.txt"_pv), "AAA\n");
-    EXPECT_EQ(root_vfs.read_string("/nested/b.txt"_pv), "BBB\n");
+    root_vfs.mount_dir("/./", dir);
+    EXPECT_EQ(root_vfs.read_string("/a.txt"), "AAA\n");
+    EXPECT_EQ(root_vfs.read_string("/nested/b.txt"), "BBB\n");
 
     lochfolk::virtual_file_system bad_vfs;
     EXPECT_THROW(
-        bad_vfs.mount_dir("relative"_pv, dir),
+        bad_vfs.mount_dir("relative", dir),
         lochfolk::virtual_file_system::error
     );
 }
@@ -504,17 +487,17 @@ TEST(VFS, MountZIPArchive)
 
     lochfolk::virtual_file_system vfs;
 
-    vfs.mount_archive("/archive"_pv, "test_vfs_data/ar.zip");
+    vfs.mount_archive("/archive", "test_vfs_data/ar.zip");
     vfs.list_files(std::cerr);
 
-    EXPECT_TRUE(vfs.is_directory("/archive"_pv));
+    EXPECT_TRUE(vfs.is_directory("/archive"));
 
-    EXPECT_EQ(read_all(vfs, "/archive/info.txt"_pv), "archive\n");
-    EXPECT_EQ(vfs.read_string("/archive/info.txt"_pv), "archive\n");
-    EXPECT_EQ(read_all(vfs, "/archive/data/value.txt"_pv), "182375 182376\n");
+    EXPECT_EQ(read_all(vfs, "/archive/info.txt"), "archive\n");
+    EXPECT_EQ(vfs.read_string("/archive/info.txt"), "archive\n");
+    EXPECT_EQ(read_all(vfs, "/archive/data/value.txt"), "182375 182376\n");
 
     {
-        auto vfss = vfs.open("/archive/info.txt"_pv);
+        auto vfss = vfs.open("/archive/info.txt");
 
         std::string str;
         vfss >> str;
@@ -522,7 +505,7 @@ TEST(VFS, MountZIPArchive)
     }
 
     {
-        auto vfss = vfs.open("/archive/data/value.txt"_pv);
+        auto vfss = vfs.open("/archive/data/value.txt");
 
         int v1 = 0, v2 = 0;
         vfss >> v1 >> v2;
@@ -530,11 +513,11 @@ TEST(VFS, MountZIPArchive)
         EXPECT_EQ(v2, 182376);
     }
 
-    EXPECT_TRUE(vfs.exists("/archive/info.txt"_pv));
-    EXPECT_TRUE(vfs.exists("/archive/data/value.txt"_pv));
-    EXPECT_TRUE(vfs.remove("/archive"_pv));
-    EXPECT_FALSE(vfs.exists("/archive/info.txt"_pv));
-    EXPECT_FALSE(vfs.exists("/archive/data/value.txt"_pv));
+    EXPECT_TRUE(vfs.exists("/archive/info.txt"));
+    EXPECT_TRUE(vfs.exists("/archive/data/value.txt"));
+    EXPECT_TRUE(vfs.remove("/archive"));
+    EXPECT_FALSE(vfs.exists("/archive/info.txt"));
+    EXPECT_FALSE(vfs.exists("/archive/data/value.txt"));
 }
 
 TEST(VFS, ReadEmptyEntryFromArchive)
@@ -545,21 +528,21 @@ TEST(VFS, ReadEmptyEntryFromArchive)
         GTEST_SKIP() << "test_vfs_data/ar.zip not found";
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_archive("/archive"_pv, "test_vfs_data/ar.zip");
+    vfs.mount_archive("/archive", "test_vfs_data/ar.zip");
 
-    ASSERT_TRUE(vfs.exists("/archive/empty.txt"_pv));
-    EXPECT_FALSE(vfs.is_directory("/archive/empty.txt"_pv));
-    EXPECT_EQ(vfs.file_size("/archive/empty.txt"_pv), 0u);
+    ASSERT_TRUE(vfs.exists("/archive/empty.txt"));
+    EXPECT_FALSE(vfs.is_directory("/archive/empty.txt"));
+    EXPECT_EQ(vfs.file_size("/archive/empty.txt"), 0u);
 
     // A zero-byte entry must read as empty. mz_zip_entry_read() rejects
     // zero-length reads with MZ_PARAM_ERROR, so the archive reader has to
     // handle this case before calling into minizip.
-    EXPECT_EQ(vfs.read_string("/archive/empty.txt"_pv), "");
-    EXPECT_EQ(vfs.read_string("/archive/empty.txt"_pv, false), "");
-    EXPECT_EQ(read_all(vfs, "/archive/empty.txt"_pv), "");
+    EXPECT_EQ(vfs.read_string("/archive/empty.txt"), "");
+    EXPECT_EQ(vfs.read_string("/archive/empty.txt", false), "");
+    EXPECT_EQ(read_all(vfs, "/archive/empty.txt"), "");
 
     {
-        auto fh = vfs.fopen("/archive/empty.txt"_pv);
+        auto fh = vfs.fopen("/archive/empty.txt");
 
         EXPECT_EQ(fh->file_size(), 0u);
         EXPECT_EQ(read_all(*fh), "");
@@ -584,19 +567,19 @@ TEST(VFS, MountArchiveRejectsUnsafeEntries)
 
         lochfolk::virtual_file_system vfs;
         EXPECT_THROW(
-            vfs.mount_archive("/archive"_pv, archive),
+            vfs.mount_archive("/archive", archive),
             lochfolk::virtual_file_system::error
         ) << archive;
 
         // The unsafe entry must not have been mounted, neither outside the
         // mount point nor with a literal "."/".." component below it.
-        EXPECT_FALSE(vfs.exists("/evil_absolute.txt"_pv)) << archive;
-        EXPECT_FALSE(vfs.exists("/evil_parent.txt"_pv)) << archive;
-        EXPECT_FALSE(vfs.exists("/evil_dot.txt"_pv)) << archive;
-        EXPECT_FALSE(vfs.exists("/archive/evil_absolute.txt"_pv)) << archive;
-        EXPECT_FALSE(vfs.exists("/archive/evil_parent.txt"_pv)) << archive;
-        EXPECT_FALSE(vfs.exists("/archive/evil_dot.txt"_pv)) << archive;
-        EXPECT_FALSE(vfs.exists("/archive/../evil_parent.txt"_pv)) << archive;
+        EXPECT_FALSE(vfs.exists("/evil_absolute.txt")) << archive;
+        EXPECT_FALSE(vfs.exists("/evil_parent.txt")) << archive;
+        EXPECT_FALSE(vfs.exists("/evil_dot.txt")) << archive;
+        EXPECT_FALSE(vfs.exists("/archive/evil_absolute.txt")) << archive;
+        EXPECT_FALSE(vfs.exists("/archive/evil_parent.txt")) << archive;
+        EXPECT_FALSE(vfs.exists("/archive/evil_dot.txt")) << archive;
+        EXPECT_FALSE(vfs.exists("/archive/../evil_parent.txt")) << archive;
     }
 
     // All entry names are validated before anything is mounted, so a rejected
@@ -605,12 +588,12 @@ TEST(VFS, MountArchiveRejectsUnsafeEntries)
     {
         lochfolk::virtual_file_system vfs;
         EXPECT_THROW(
-            vfs.mount_archive("/archive"_pv, "test_vfs_data/evil_mixed.zip"),
+            vfs.mount_archive("/archive", "test_vfs_data/evil_mixed.zip"),
             lochfolk::virtual_file_system::error
         );
-        EXPECT_FALSE(vfs.exists("/archive"_pv));
-        EXPECT_FALSE(vfs.exists("/archive/good.txt"_pv));
-        EXPECT_FALSE(vfs.exists("/good.txt"_pv));
+        EXPECT_FALSE(vfs.exists("/archive"));
+        EXPECT_FALSE(vfs.exists("/archive/good.txt"));
+        EXPECT_FALSE(vfs.exists("/good.txt"));
     }
 
     // A relative mount base is rejected as well.
@@ -618,7 +601,7 @@ TEST(VFS, MountArchiveRejectsUnsafeEntries)
     {
         lochfolk::virtual_file_system vfs;
         EXPECT_THROW(
-            vfs.mount_archive("relative"_pv, "test_vfs_data/ar.zip"),
+            vfs.mount_archive("relative", "test_vfs_data/ar.zip"),
             lochfolk::virtual_file_system::error
         );
     }
@@ -629,15 +612,15 @@ TEST(VFS, RemoveMissing)
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_string("/data/file.txt"_pv, "content");
+    vfs.mount_string("/data/file.txt", "content");
 
-    EXPECT_FALSE(vfs.remove("/missing/file.txt"_pv));
-    EXPECT_FALSE(vfs.remove("/data/missing.txt"_pv));
-    EXPECT_FALSE(vfs.remove("/data/file.txt/child"_pv));
-    EXPECT_TRUE(vfs.exists("/data/file.txt"_pv));
+    EXPECT_FALSE(vfs.remove("/missing/file.txt"));
+    EXPECT_FALSE(vfs.remove("/data/missing.txt"));
+    EXPECT_FALSE(vfs.remove("/data/file.txt/child"));
+    EXPECT_TRUE(vfs.exists("/data/file.txt"));
 
-    EXPECT_TRUE(vfs.remove("/data/file.txt//"_pv));
-    EXPECT_FALSE(vfs.exists("/data/file.txt"_pv));
+    EXPECT_TRUE(vfs.remove("/data/file.txt//"));
+    EXPECT_FALSE(vfs.exists("/data/file.txt"));
 }
 
 TEST(VFS, RemoveRootSeparators)
@@ -647,25 +630,25 @@ TEST(VFS, RemoveRootSeparators)
     // A path of separators only refers to the root directory, exactly like
     // "/". It used to throw std::out_of_range from string_view::substr().
     lochfolk::virtual_file_system vfs;
-    vfs.mount_string("/a.txt"_pv, "a");
-    vfs.mount_string("/dir/b.txt"_pv, "b");
+    vfs.mount_string("/a.txt", "a");
+    vfs.mount_string("/dir/b.txt", "b");
 
-    EXPECT_TRUE(vfs.remove("//"_pv));
-    EXPECT_TRUE(vfs.is_directory("/"_pv));
-    EXPECT_FALSE(vfs.exists("/a.txt"_pv));
-    EXPECT_FALSE(vfs.exists("/dir"_pv));
+    EXPECT_TRUE(vfs.remove("//"));
+    EXPECT_TRUE(vfs.is_directory("/"));
+    EXPECT_FALSE(vfs.exists("/a.txt"));
+    EXPECT_FALSE(vfs.exists("/dir"));
 
-    vfs.mount_string("/c.txt"_pv, "c");
-    EXPECT_TRUE(vfs.remove("///"_pv));
-    EXPECT_FALSE(vfs.exists("/c.txt"_pv));
+    vfs.mount_string("/c.txt", "c");
+    EXPECT_TRUE(vfs.remove("///"));
+    EXPECT_FALSE(vfs.exists("/c.txt"));
 
-    vfs.mount_string("/d.txt"_pv, "d");
-    EXPECT_TRUE(vfs.remove("////"_pv));
-    EXPECT_FALSE(vfs.exists("/d.txt"_pv));
+    vfs.mount_string("/d.txt", "d");
+    EXPECT_TRUE(vfs.remove("////"));
+    EXPECT_FALSE(vfs.exists("/d.txt"));
 
-    vfs.mount_string("/e.txt"_pv, "e");
-    EXPECT_TRUE(vfs.remove("/"_pv));
-    EXPECT_FALSE(vfs.exists("/e.txt"_pv));
+    vfs.mount_string("/e.txt", "e");
+    EXPECT_TRUE(vfs.remove("/"));
+    EXPECT_FALSE(vfs.exists("/e.txt"));
 }
 
 TEST(VFS, RemoveDotComponents)
@@ -673,25 +656,25 @@ TEST(VFS, RemoveDotComponents)
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_string("/a/b.txt"_pv, "b");
-    vfs.mount_string("/a/c.txt"_pv, "c");
-    vfs.mount_string("/keep.txt"_pv, "k");
+    vfs.mount_string("/a/b.txt", "b");
+    vfs.mount_string("/a/c.txt", "c");
+    vfs.mount_string("/keep.txt", "k");
 
-    EXPECT_TRUE(vfs.remove("/a/./b.txt"_pv));
-    EXPECT_FALSE(vfs.exists("/a/b.txt"_pv));
+    EXPECT_TRUE(vfs.remove("/a/./b.txt"));
+    EXPECT_FALSE(vfs.exists("/a/b.txt"));
 
-    EXPECT_TRUE(vfs.remove("/a/../a/c.txt"_pv));
-    EXPECT_FALSE(vfs.exists("/a/c.txt"_pv));
+    EXPECT_TRUE(vfs.remove("/a/../a/c.txt"));
+    EXPECT_FALSE(vfs.exists("/a/c.txt"));
 
     // Missing components before ".." are resolved lexically, just like for
     // lookups; the path still names "/a/missing.txt" and is not found.
-    EXPECT_FALSE(vfs.remove("/a/missing/../missing.txt"_pv));
-    EXPECT_TRUE(vfs.exists("/keep.txt"_pv));
+    EXPECT_FALSE(vfs.remove("/a/missing/../missing.txt"));
+    EXPECT_TRUE(vfs.exists("/keep.txt"));
 
     // A path that normalizes to the root removes everything below it.
-    EXPECT_TRUE(vfs.remove("/a/.."_pv));
-    EXPECT_TRUE(vfs.exists("/"_pv));
-    EXPECT_FALSE(vfs.exists("/keep.txt"_pv));
+    EXPECT_TRUE(vfs.remove("/a/.."));
+    EXPECT_TRUE(vfs.exists("/"));
+    EXPECT_FALSE(vfs.exists("/keep.txt"));
 }
 
 TEST(VFS, MountEmptyDir)
@@ -706,10 +689,10 @@ TEST(VFS, MountEmptyDir)
 
     {
         lochfolk::virtual_file_system vfs;
-        vfs.mount_dir("/empty"_pv, empty_dir);
+        vfs.mount_dir("/empty", empty_dir);
 
-        EXPECT_TRUE(vfs.exists("/empty"_pv));
-        EXPECT_TRUE(vfs.is_directory("/empty"_pv));
+        EXPECT_TRUE(vfs.exists("/empty"));
+        EXPECT_TRUE(vfs.is_directory("/empty"));
     }
 
     stdfs::remove_all(empty_dir, ec);
@@ -720,15 +703,15 @@ TEST(VFS, FopenErrors)
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_string("/dir/file.txt"_pv, "x");
+    vfs.mount_string("/dir/file.txt", "x");
 
-    EXPECT_THROW(vfs.fopen("/missing"_pv), lochfolk::virtual_file_system::error);
-    EXPECT_THROW(vfs.fopen("/dir"_pv), lochfolk::virtual_file_system::error);
+    EXPECT_THROW(vfs.fopen("/missing"), lochfolk::virtual_file_system::error);
+    EXPECT_THROW(vfs.fopen("/dir"), lochfolk::virtual_file_system::error);
     EXPECT_THROW(
-        vfs.fopen("/dir/file.txt"_pv, lochfolk::file_flag::unknown),
+        vfs.fopen("/dir/file.txt", lochfolk::file_flag::unknown),
         std::invalid_argument
     );
-    EXPECT_THROW((void)vfs.read_string("/dir"_pv), lochfolk::virtual_file_system::error);
+    EXPECT_THROW((void)vfs.read_string("/dir"), lochfolk::virtual_file_system::error);
 }
 
 TEST(VFS, FopenMissingSystemFile)
@@ -743,10 +726,10 @@ TEST(VFS, FopenMissingSystemFile)
     }
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_file("/gone.txt"_pv, gone);
+    vfs.mount_file("/gone.txt", gone);
     stdfs::remove(gone);
 
-    EXPECT_THROW(vfs.fopen("/gone.txt"_pv), std::system_error);
+    EXPECT_THROW(vfs.fopen("/gone.txt"), std::system_error);
 }
 
 TEST(VFS, ReadOnlyEntriesIgnoreWritable)
@@ -754,26 +737,26 @@ TEST(VFS, ReadOnlyEntriesIgnoreWritable)
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_string("/s.txt"_pv, "abc");
+    vfs.mount_string("/s.txt", "abc");
 
     const std::byte data[] = {std::byte{'Z'}};
 
     {
-        auto fh = vfs.fopen("/s.txt"_pv, lochfolk::file_flag::read_write);
+        auto fh = vfs.fopen("/s.txt", lochfolk::file_flag::read_write);
         EXPECT_FALSE(fh->writable());
         EXPECT_TRUE(fh->write(std::span<const std::byte>(data)).is_npos());
     }
 
-    EXPECT_EQ(vfs.read_string("/s.txt"_pv), "abc");
+    EXPECT_EQ(vfs.read_string("/s.txt"), "abc");
 
     if(std::filesystem::exists("test_vfs_data/ar.zip"))
     {
-        vfs.mount_archive("/archive"_pv, "test_vfs_data/ar.zip");
+        vfs.mount_archive("/archive", "test_vfs_data/ar.zip");
 
-        auto fh = vfs.fopen("/archive/info.txt"_pv, lochfolk::file_flag::read_write);
+        auto fh = vfs.fopen("/archive/info.txt", lochfolk::file_flag::read_write);
         EXPECT_FALSE(fh->writable());
         EXPECT_TRUE(fh->write(std::span<const std::byte>(data)).is_npos());
-        EXPECT_EQ(vfs.read_string("/archive/info.txt"_pv), "archive\n");
+        EXPECT_EQ(vfs.read_string("/archive/info.txt"), "archive\n");
     }
 }
 
@@ -789,10 +772,10 @@ TEST(VFS, WritableSystemFile)
     }
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_file("/w.txt"_pv, file);
+    vfs.mount_file("/w.txt", file);
 
     {
-        auto fh = vfs.fopen("/w.txt"_pv, lochfolk::file_flag::read_write);
+        auto fh = vfs.fopen("/w.txt", lochfolk::file_flag::read_write);
 
         EXPECT_TRUE(fh->readable());
         EXPECT_TRUE(fh->writable());
@@ -808,12 +791,12 @@ TEST(VFS, WritableSystemFile)
         EXPECT_EQ(written.bytes_transferred(), 6);
     }
 
-    EXPECT_EQ(vfs.file_size("/w.txt"_pv), 11);
-    EXPECT_EQ(read_all(vfs, "/w.txt"_pv), "hello world");
+    EXPECT_EQ(vfs.file_size("/w.txt"), 11);
+    EXPECT_EQ(read_all(vfs, "/w.txt"), "hello world");
 
     // A write-only handle cannot read
     {
-        auto fh = vfs.fopen("/w.txt"_pv, lochfolk::file_flag::writable);
+        auto fh = vfs.fopen("/w.txt", lochfolk::file_flag::writable);
 
         EXPECT_FALSE(fh->readable());
         EXPECT_TRUE(fh->writable());
@@ -830,19 +813,19 @@ TEST(VFS, ConvertCRLFString)
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_string("/crlf.txt"_pv, "a\r\nb\r\nc");
+    vfs.mount_string("/crlf.txt", "a\r\nb\r\nc");
 
-    EXPECT_EQ(vfs.read_string("/crlf.txt"_pv), "a\nb\nc");
-    EXPECT_EQ(vfs.read_string("/crlf.txt"_pv, false), "a\r\nb\r\nc");
+    EXPECT_EQ(vfs.read_string("/crlf.txt"), "a\nb\nc");
+    EXPECT_EQ(vfs.read_string("/crlf.txt", false), "a\r\nb\r\nc");
 
     {
-        auto fh = vfs.fopen("/crlf.txt"_pv, lochfolk::file_flag::readable, true);
+        auto fh = vfs.fopen("/crlf.txt", lochfolk::file_flag::readable, true);
         EXPECT_EQ(fh->file_size(), 7); // raw size
         EXPECT_EQ(read_all(*fh), "a\nb\nc");
     }
 
     {
-        auto fh = vfs.fopen("/crlf.txt"_pv, lochfolk::file_flag::readable, false);
+        auto fh = vfs.fopen("/crlf.txt", lochfolk::file_flag::readable, false);
         EXPECT_EQ(read_all(*fh), "a\r\nb\r\nc");
     }
 
@@ -851,18 +834,18 @@ TEST(VFS, ConvertCRLFString)
         std::string padded(4095, 'x');
         padded += "\r\n";
         padded += "tail";
-        vfs.mount_string("/edge.txt"_pv, padded);
+        vfs.mount_string("/edge.txt", padded);
 
         std::string expected(4095, 'x');
         expected += "\ntail";
 
-        EXPECT_EQ(vfs.read_string("/edge.txt"_pv), expected);
+        EXPECT_EQ(vfs.read_string("/edge.txt"), expected);
     }
 
     // A lone CR is not translated
     {
-        vfs.mount_string("/lone.txt"_pv, "x\ry");
-        EXPECT_EQ(vfs.read_string("/lone.txt"_pv), "x\ry");
+        vfs.mount_string("/lone.txt", "x\ry");
+        EXPECT_EQ(vfs.read_string("/lone.txt"), "x\ry");
     }
 }
 
@@ -873,35 +856,35 @@ TEST(VFS, ConvertCRLFEdgeCases)
     lochfolk::virtual_file_system vfs;
 
     // A trailing lone CR at end of file is preserved
-    vfs.mount_string("/trail.txt"_pv, "abc\r");
-    EXPECT_EQ(vfs.read_string("/trail.txt"_pv), "abc\r");
+    vfs.mount_string("/trail.txt", "abc\r");
+    EXPECT_EQ(vfs.read_string("/trail.txt"), "abc\r");
 
     // Empty content
-    vfs.mount_string("/empty.txt"_pv, "");
-    EXPECT_EQ(vfs.read_string("/empty.txt"_pv), "");
+    vfs.mount_string("/empty.txt", "");
+    EXPECT_EQ(vfs.read_string("/empty.txt"), "");
 
     // CR at a chunk boundary followed by something that is not LF
     {
         std::string content(4095, 'x');
         content += "\r";
         content += "y";
-        vfs.mount_string("/split.txt"_pv, content);
-        EXPECT_EQ(vfs.read_string("/split.txt"_pv), content);
+        vfs.mount_string("/split.txt", content);
+        EXPECT_EQ(vfs.read_string("/split.txt"), content);
     }
 
     // A chunk consisting only of a lone CR must not look like end of file
     {
         std::string content(4096, 'x');
         content += "\r";
-        vfs.mount_string("/tail_cr.txt"_pv, content);
-        EXPECT_EQ(vfs.read_string("/tail_cr.txt"_pv), content);
+        vfs.mount_string("/tail_cr.txt", content);
+        EXPECT_EQ(vfs.read_string("/tail_cr.txt"), content);
     }
 
     // Seeking rewinds the translation state
     {
-        vfs.mount_string("/rewind.txt"_pv, "p\r\nq\r\n");
+        vfs.mount_string("/rewind.txt", "p\r\nq\r\n");
 
-        auto fh = vfs.fopen("/rewind.txt"_pv, lochfolk::file_flag::readable, true);
+        auto fh = vfs.fopen("/rewind.txt", lochfolk::file_flag::readable, true);
         const std::string first = read_all(*fh, 1);
         EXPECT_EQ(first, "p\nq\n");
 
@@ -912,7 +895,7 @@ TEST(VFS, ConvertCRLFEdgeCases)
 
     // Seeking past the end is allowed and reads return EOF
     {
-        auto fh = vfs.fopen("/trail.txt"_pv, lochfolk::file_flag::readable, true);
+        auto fh = vfs.fopen("/trail.txt", lochfolk::file_flag::readable, true);
         EXPECT_TRUE(fh->seek(1, lochfolk::whence::end));
 
         std::byte buf[4];
@@ -932,21 +915,21 @@ TEST(VFS, ConvertCRLFHandleChunkBoundary)
     std::string content(4095, 'x');
     content += '\r';
     content += std::string(4096, 'y');
-    vfs.mount_string("/handle_edge.txt"_pv, content);
+    vfs.mount_string("/handle_edge.txt", content);
 
-    EXPECT_EQ(vfs.read_string("/handle_edge.txt"_pv), content);
-    EXPECT_EQ(vfs.read_string("/handle_edge.txt"_pv, false), content);
+    EXPECT_EQ(vfs.read_string("/handle_edge.txt"), content);
+    EXPECT_EQ(vfs.read_string("/handle_edge.txt", false), content);
 
     {
         auto fh = vfs.fopen(
-            "/handle_edge.txt"_pv, lochfolk::file_flag::readable, true
+            "/handle_edge.txt", lochfolk::file_flag::readable, true
         );
         EXPECT_EQ(read_all(*fh, 1), content);
     }
 
     {
         auto fh = vfs.fopen(
-            "/handle_edge.txt"_pv, lochfolk::file_flag::readable, true
+            "/handle_edge.txt", lochfolk::file_flag::readable, true
         );
         EXPECT_EQ(read_all(*fh), content);
     }
@@ -964,10 +947,10 @@ TEST(VFS, ConvertCRLFStreamChunkBoundary)
     std::string content(8191, 'x');
     content += '\r';
     content += "a\nb";
-    vfs.mount_string("/stream_edge.txt"_pv, content);
+    vfs.mount_string("/stream_edge.txt", content);
 
     {
-        auto vfss = vfs.open("/stream_edge.txt"_pv);
+        auto vfss = vfs.open("/stream_edge.txt");
         std::istreambuf_iterator<char> first(vfss);
         std::istreambuf_iterator<char> last;
         EXPECT_EQ(std::string(first, last), content);
@@ -978,10 +961,10 @@ TEST(VFS, ConvertCRLFStreamChunkBoundary)
     std::string full(8191, 'x');
     full += '\r';
     full += std::string(8192, 'y');
-    vfs.mount_string("/stream_full.txt"_pv, full);
+    vfs.mount_string("/stream_full.txt", full);
 
     {
-        auto vfss = vfs.open("/stream_full.txt"_pv);
+        auto vfss = vfs.open("/stream_full.txt");
         std::istreambuf_iterator<char> first(vfss);
         std::istreambuf_iterator<char> last;
         EXPECT_EQ(std::string(first, last), full);
@@ -1085,13 +1068,13 @@ TEST(VFS, ConvertCRLFSystemFile)
     }
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_file("/crlf.txt"_pv, file);
+    vfs.mount_file("/crlf.txt", file);
 
-    EXPECT_EQ(vfs.read_string("/crlf.txt"_pv), "1\n2\n");
-    EXPECT_EQ(vfs.read_string("/crlf.txt"_pv, false), "1\r\n2\r\n");
+    EXPECT_EQ(vfs.read_string("/crlf.txt"), "1\n2\n");
+    EXPECT_EQ(vfs.read_string("/crlf.txt", false), "1\r\n2\r\n");
 
     {
-        auto fh = vfs.fopen("/crlf.txt"_pv, lochfolk::file_flag::readable, true);
+        auto fh = vfs.fopen("/crlf.txt", lochfolk::file_flag::readable, true);
         EXPECT_EQ(read_all(*fh), "1\n2\n");
     }
 
@@ -1106,11 +1089,11 @@ TEST(VFS, ConvertCRLFArchive)
         GTEST_SKIP() << "test_vfs_data/ar.zip not found";
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_archive("/archive"_pv, "test_vfs_data/ar.zip");
+    vfs.mount_archive("/archive", "test_vfs_data/ar.zip");
 
-    ASSERT_TRUE(vfs.exists("/archive/crlf.txt"_pv));
-    EXPECT_EQ(vfs.read_string("/archive/crlf.txt"_pv), "line1\nline2\n");
-    EXPECT_EQ(vfs.read_string("/archive/crlf.txt"_pv, false), "line1\r\nline2\r\n");
+    ASSERT_TRUE(vfs.exists("/archive/crlf.txt"));
+    EXPECT_EQ(vfs.read_string("/archive/crlf.txt"), "line1\nline2\n");
+    EXPECT_EQ(vfs.read_string("/archive/crlf.txt", false), "line1\r\nline2\r\n");
 }
 
 TEST(VFS, LargeContent)
@@ -1123,17 +1106,17 @@ TEST(VFS, LargeContent)
         big.push_back(static_cast<char>('a' + (i % 26)));
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_string("/big.txt"_pv, big);
+    vfs.mount_string("/big.txt", big);
 
-    EXPECT_EQ(vfs.read_string("/big.txt"_pv), big);
+    EXPECT_EQ(vfs.read_string("/big.txt"), big);
 
     {
-        auto fh = vfs.fopen("/big.txt"_pv);
+        auto fh = vfs.fopen("/big.txt");
         EXPECT_EQ(read_all(*fh), big);
     }
 
     {
-        auto fh = vfs.fopen("/big.txt"_pv);
+        auto fh = vfs.fopen("/big.txt");
         std::vector<std::byte> buf(4096);
 
         EXPECT_TRUE(fh->seek(9000, lochfolk::whence::begin));
@@ -1152,43 +1135,43 @@ TEST(VFS, AccessContext)
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_string("/data/strings/str.txt"_pv, "str");
-    vfs.mount_string("/info/info.txt"_pv, "1013");
+    vfs.mount_string("/data/strings/str.txt", "str");
+    vfs.mount_string("/info/info.txt", "1013");
 
     lochfolk::access_context ctx(vfs);
     EXPECT_EQ(&ctx.get_vfs(), &vfs);
 
-    EXPECT_EQ(ctx.current_path(), "/"_pv);
+    EXPECT_EQ(ctx.current_path(), "/");
 
-    ctx.current_path("/data"_pv);
-    EXPECT_EQ(ctx.current_path(), "/data"_pv);
+    ctx.current_path("/data");
+    EXPECT_EQ(ctx.current_path(), "/data");
 
     {
-        std::string str = ctx.read_string("strings/str.txt"_pv);
+        std::string str = ctx.read_string("strings/str.txt");
 
         EXPECT_EQ(str, "str");
     }
 
-    EXPECT_EQ(ctx.to_fullpath("strings"_pv), "/data/strings"_pv);
-    EXPECT_EQ(ctx.to_fullpath("./strings"_pv), "/data/strings"_pv);
-    EXPECT_EQ(ctx.to_fullpath("/data/./strings"_pv), "/data/strings"_pv);
-    EXPECT_EQ(ctx.to_fullpath("/data/../info/info.txt"_pv), "/info/info.txt"_pv);
-    EXPECT_EQ(ctx.to_fullpath("../info/info.txt"_pv), "/info/info.txt"_pv);
+    EXPECT_EQ(ctx.to_fullpath("strings"), "/data/strings");
+    EXPECT_EQ(ctx.to_fullpath("./strings"), "/data/strings");
+    EXPECT_EQ(ctx.to_fullpath("/data/./strings"), "/data/strings");
+    EXPECT_EQ(ctx.to_fullpath("/data/../info/info.txt"), "/info/info.txt");
+    EXPECT_EQ(ctx.to_fullpath("../info/info.txt"), "/info/info.txt");
 
-    EXPECT_TRUE(ctx.is_directory("strings"_pv));
-    EXPECT_FALSE(ctx.is_directory("strings/str.txt"_pv));
+    EXPECT_TRUE(ctx.is_directory("strings"));
+    EXPECT_FALSE(ctx.is_directory("strings/str.txt"));
 
-    EXPECT_TRUE(ctx.exists("../info/info.txt"_pv));
-    EXPECT_EQ(ctx.file_size("../info/info.txt"_pv), 4);
-    EXPECT_FALSE(ctx.exists("../info/str.txt"_pv));
+    EXPECT_TRUE(ctx.exists("../info/info.txt"));
+    EXPECT_EQ(ctx.file_size("../info/info.txt"), 4);
+    EXPECT_FALSE(ctx.exists("../info/str.txt"));
 
     {
-        auto fh = ctx.fopen("../info/info.txt"_pv);
+        auto fh = ctx.fopen("../info/info.txt");
         EXPECT_EQ(read_all(*fh), "1013");
     }
 
     {
-        auto vfss = ctx.open("../info/info.txt"_pv);
+        auto vfss = ctx.open("../info/info.txt");
 
         int v = 0;
         vfss >> v;
@@ -1196,37 +1179,37 @@ TEST(VFS, AccessContext)
     }
 
     {
-        std::string str = ctx.read_string("../info/info.txt"_pv);
+        std::string str = ctx.read_string("../info/info.txt");
 
         EXPECT_EQ(str, "1013");
     }
 
-    EXPECT_TRUE(ctx.remove("../info/info.txt"_pv));
-    EXPECT_FALSE(ctx.exists("../info/info.txt"_pv));
-    EXPECT_FALSE(ctx.remove("../info/info.txt"_pv));
+    EXPECT_TRUE(ctx.remove("../info/info.txt"));
+    EXPECT_FALSE(ctx.exists("../info/info.txt"));
+    EXPECT_FALSE(ctx.remove("../info/info.txt"));
 
-    ctx.current_path("strings"_pv);
-    EXPECT_EQ(ctx.current_path(), "/data/strings"_pv);
-    EXPECT_TRUE(ctx.exists("str.txt"_pv));
+    ctx.current_path("strings");
+    EXPECT_EQ(ctx.current_path(), "/data/strings");
+    EXPECT_TRUE(ctx.exists("str.txt"));
 
     {
-        std::string str = ctx.read_string("str.txt"_pv);
+        std::string str = ctx.read_string("str.txt");
 
         EXPECT_EQ(str, "str");
     }
 
-    ctx.current_path(".."_pv);
-    EXPECT_EQ(ctx.current_path(), "/data/"_pv);
+    ctx.current_path("..");
+    EXPECT_EQ(ctx.current_path(), "/data/");
 
     {
-        std::string str = ctx.read_string("strings/str.txt"_pv);
+        std::string str = ctx.read_string("strings/str.txt");
 
         EXPECT_EQ(str, "str");
     }
 
-    EXPECT_TRUE(ctx.exists("/data/strings/str.txt"_pv));
-    EXPECT_TRUE(ctx.remove("/data"_pv));
-    EXPECT_FALSE(ctx.exists("/data/strings/str.txt"_pv));
+    EXPECT_TRUE(ctx.exists("/data/strings/str.txt"));
+    EXPECT_TRUE(ctx.remove("/data"));
+    EXPECT_FALSE(ctx.exists("/data/strings/str.txt"));
 }
 
 TEST(VFS, AccessContextArchive)
@@ -1234,39 +1217,39 @@ TEST(VFS, AccessContextArchive)
     using namespace lochfolk::vfs_literals;
 
     lochfolk::virtual_file_system vfs;
-    vfs.mount_archive("/archive"_pv, "test_vfs_data/ar.zip");
+    vfs.mount_archive("/archive", "test_vfs_data/ar.zip");
     vfs.list_files(std::cerr);
 
     lochfolk::access_context ctx(vfs);
-    ctx.current_path("archive"_pv);
-    EXPECT_EQ(ctx.current_path(), "/archive"_pv);
+    ctx.current_path("archive");
+    EXPECT_EQ(ctx.current_path(), "/archive");
 
-    EXPECT_EQ(read_all(*ctx.fopen("/archive/info.txt"_pv)), "archive\n");
-    EXPECT_EQ(read_all(*ctx.fopen("info.txt"_pv)), "archive\n");
+    EXPECT_EQ(read_all(*ctx.fopen("/archive/info.txt")), "archive\n");
+    EXPECT_EQ(read_all(*ctx.fopen("info.txt")), "archive\n");
 
     {
-        auto vfss = ctx.open("info.txt"_pv);
+        auto vfss = ctx.open("info.txt");
 
         std::string str;
         vfss >> str;
         EXPECT_EQ(str, "archive");
     }
 
-    EXPECT_EQ(ctx.read_string("info.txt"_pv), "archive\n");
-    EXPECT_EQ(ctx.read_string("/archive/info.txt"_pv), "archive\n");
+    EXPECT_EQ(ctx.read_string("info.txt"), "archive\n");
+    EXPECT_EQ(ctx.read_string("/archive/info.txt"), "archive\n");
 
-    EXPECT_EQ(read_all(*ctx.fopen("/archive/data/value.txt"_pv)), "182375 182376\n");
-    EXPECT_EQ(read_all(*ctx.fopen("data/value.txt"_pv)), "182375 182376\n");
+    EXPECT_EQ(read_all(*ctx.fopen("/archive/data/value.txt")), "182375 182376\n");
+    EXPECT_EQ(read_all(*ctx.fopen("data/value.txt")), "182375 182376\n");
 
-    EXPECT_TRUE(ctx.exists("/archive/info.txt"_pv));
-    EXPECT_TRUE(ctx.exists("info.txt"_pv));
-    EXPECT_TRUE(ctx.exists("/archive/data/value.txt"_pv));
-    EXPECT_TRUE(ctx.exists("data/value.txt"_pv));
+    EXPECT_TRUE(ctx.exists("/archive/info.txt"));
+    EXPECT_TRUE(ctx.exists("info.txt"));
+    EXPECT_TRUE(ctx.exists("/archive/data/value.txt"));
+    EXPECT_TRUE(ctx.exists("data/value.txt"));
 
-    EXPECT_TRUE(ctx.remove("data/"_pv));
-    EXPECT_TRUE(ctx.exists("info.txt"_pv));
-    EXPECT_FALSE(ctx.exists("/archive/data/value.txt"_pv));
-    EXPECT_FALSE(ctx.exists("data/value.txt"_pv));
+    EXPECT_TRUE(ctx.remove("data/"));
+    EXPECT_TRUE(ctx.exists("info.txt"));
+    EXPECT_FALSE(ctx.exists("/archive/data/value.txt"));
+    EXPECT_FALSE(ctx.exists("data/value.txt"));
 }
 
 TEST(VFS, StreamTextMode)
@@ -1276,11 +1259,11 @@ TEST(VFS, StreamTextMode)
     lochfolk::virtual_file_system vfs;
 
     // Three lines: nine raw bytes, six characters after translation
-    vfs.mount_string("/t.txt"_pv, "a\r\nb\r\nc\r\n");
+    vfs.mount_string("/t.txt", "a\r\nb\r\nc\r\n");
 
     // Text mode is the default
     {
-        auto vfss = vfs.open("/t.txt"_pv);
+        auto vfss = vfs.open("/t.txt");
         std::istreambuf_iterator<char> first(vfss);
         std::istreambuf_iterator<char> last;
         EXPECT_EQ(std::string(first, last), "a\nb\nc\n");
@@ -1288,7 +1271,7 @@ TEST(VFS, StreamTextMode)
 
     // tellg/seekg use raw byte offsets
     {
-        auto vfss = vfs.open("/t.txt"_pv);
+        auto vfss = vfs.open("/t.txt");
         EXPECT_EQ(vfss.tellg(), std::streampos(0));
 
         char c = 0;
@@ -1328,12 +1311,12 @@ TEST(VFS, StreamTextMode)
         std::string content(8191, 'x');
         content += "\r\n";
         content += "tail";
-        vfs.mount_string("/edge.txt"_pv, content);
+        vfs.mount_string("/edge.txt", content);
 
         std::string expected(8191, 'x');
         expected += "\ntail";
 
-        auto vfss = vfs.open("/edge.txt"_pv);
+        auto vfss = vfs.open("/edge.txt");
         std::istreambuf_iterator<char> first(vfss);
         std::istreambuf_iterator<char> last;
         EXPECT_EQ(std::string(first, last), expected);
@@ -1343,9 +1326,9 @@ TEST(VFS, StreamTextMode)
     {
         std::string content(8192, 'x');
         content += "\r";
-        vfs.mount_string("/tail_cr.txt"_pv, content);
+        vfs.mount_string("/tail_cr.txt", content);
 
-        auto vfss = vfs.open("/tail_cr.txt"_pv);
+        auto vfss = vfs.open("/tail_cr.txt");
         std::istreambuf_iterator<char> first(vfss);
         std::istreambuf_iterator<char> last;
         EXPECT_EQ(std::string(first, last), content);
@@ -1353,8 +1336,8 @@ TEST(VFS, StreamTextMode)
 
     // A lone CR is preserved
     {
-        vfs.mount_string("/lone.txt"_pv, "abc\r");
-        auto vfss = vfs.open("/lone.txt"_pv);
+        vfs.mount_string("/lone.txt", "abc\r");
+        auto vfss = vfs.open("/lone.txt");
         std::istreambuf_iterator<char> first(vfss);
         std::istreambuf_iterator<char> last;
         EXPECT_EQ(std::string(first, last), "abc\r");
@@ -1383,13 +1366,13 @@ TEST(VFS, StreamAdapter)
     for(int i = 0; i < 20000; ++i)
         big.push_back(static_cast<char>('a' + (i % 26)));
 
-    vfs.mount_string("/big.txt"_pv, big);
-    vfs.mount_string("/empty.txt"_pv, "");
-    vfs.mount_string("/crlf.txt"_pv, "a\r\nb\r\n");
+    vfs.mount_string("/big.txt", big);
+    vfs.mount_string("/empty.txt", "");
+    vfs.mount_string("/crlf.txt", "a\r\nb\r\n");
 
     // Streams default to text mode (CRLF -> LF on every platform)
     {
-        auto vfss = vfs.open("/crlf.txt"_pv);
+        auto vfss = vfs.open("/crlf.txt");
         std::istreambuf_iterator<char> first(vfss);
         std::istreambuf_iterator<char> last;
         std::string str(first, last);
@@ -1399,7 +1382,7 @@ TEST(VFS, StreamAdapter)
     // ... and binary mode keeps the raw bytes
     {
         auto vfss = vfs.open(
-            "/crlf.txt"_pv, std::ios_base::in | std::ios_base::binary
+            "/crlf.txt", std::ios_base::in | std::ios_base::binary
         );
         std::istreambuf_iterator<char> first(vfss);
         std::istreambuf_iterator<char> last;
@@ -1409,7 +1392,7 @@ TEST(VFS, StreamAdapter)
 
     // tellg / seekg
     {
-        auto vfss = vfs.open("/big.txt"_pv);
+        auto vfss = vfs.open("/big.txt");
         EXPECT_EQ(vfss.tellg(), std::streampos(0));
 
         char buf[16];
@@ -1434,7 +1417,7 @@ TEST(VFS, StreamAdapter)
 
     // A long line crossing the internal buffer boundary
     {
-        auto vfss = vfs.open("/big.txt"_pv);
+        auto vfss = vfs.open("/big.txt");
 
         std::string line;
         std::getline(vfss, line);
@@ -1443,7 +1426,7 @@ TEST(VFS, StreamAdapter)
 
     // putback works after read()
     {
-        auto vfss = vfs.open("/big.txt"_pv);
+        auto vfss = vfs.open("/big.txt");
 
         char buf[3];
         vfss.read(buf, 3);
@@ -1456,23 +1439,23 @@ TEST(VFS, StreamAdapter)
 
     // Empty file
     {
-        auto vfss = vfs.open("/empty.txt"_pv);
+        auto vfss = vfs.open("/empty.txt");
         EXPECT_EQ(vfss.peek(), std::char_traits<char>::eof());
         EXPECT_TRUE(vfss.eof());
     }
 
     // Invalid modes and paths
     EXPECT_THROW(
-        vfs.open("/big.txt"_pv, std::ios_base::out), std::invalid_argument
+        vfs.open("/big.txt", std::ios_base::out), std::invalid_argument
     );
-    EXPECT_THROW(vfs.open("/missing"_pv), lochfolk::virtual_file_system::error);
+    EXPECT_THROW(vfs.open("/missing"), lochfolk::virtual_file_system::error);
 
-    vfs.mount_string("/dir/file.txt"_pv, "x");
-    EXPECT_THROW(vfs.open("/dir"_pv), lochfolk::virtual_file_system::error);
+    vfs.mount_string("/dir/file.txt", "x");
+    EXPECT_THROW(vfs.open("/dir"), lochfolk::virtual_file_system::error);
 
     // Move construction
     {
-        auto src = vfs.open("/big.txt"_pv);
+        auto src = vfs.open("/big.txt");
         EXPECT_TRUE(src.has_buffer());
 
         auto vfss = std::move(src);

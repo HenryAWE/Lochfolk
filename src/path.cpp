@@ -263,12 +263,6 @@ path& path::append(path_view p)
     }
 }
 
-path& path::concat(std::string_view sv)
-{
-    m_str.append(sv);
-    return *this;
-}
-
 path path::lexically_normal() const
 {
     if(empty())
