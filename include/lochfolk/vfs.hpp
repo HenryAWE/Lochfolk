@@ -178,6 +178,14 @@ public:
     [[nodiscard]]
     LOCHFOLK_API std::uint64_t file_size(path_view p) const;
 
+    /**
+     * @brief Remove a virtual file or directory
+     *
+     * @note This only removes the entry from the virtual file system. It does not delete the physical file.
+     *
+     * @param p Path
+     * @return True if an entry was removed, false if it did not exist
+     */
     LOCHFOLK_API bool remove(path_view p);
 
     /**

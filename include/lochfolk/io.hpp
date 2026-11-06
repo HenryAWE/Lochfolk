@@ -131,14 +131,14 @@ enum class whence : int
 class LOCHFOLK_API file_handle
 {
 protected:
-    file_handle() = default;
+    LOCHFOLK_API file_handle() = default;
 
 public:
-    file_handle(const file_handle&) = delete;
+    LOCHFOLK_API file_handle(const file_handle&) = delete;
 
     file_handle& operator=(const file_handle&) = delete;
 
-    virtual ~file_handle();
+    LOCHFOLK_API virtual ~file_handle();
 
     /**
      * @brief Access modes granted by this handle
