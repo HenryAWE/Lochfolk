@@ -64,6 +64,10 @@ else()
             )
         endif()
         file(GLOB _extracted LIST_DIRECTORIES false "${_dir}/*")
+        # BSD/macOS ar extracts the archive's symbol-table members
+        # (__.SYMDEF, __.SYMDEF SORTED) as ordinary files. Drop them; ranlib
+        # recreates a single index for the merged archive.
+        list(FILTER _extracted EXCLUDE REGEX "/(__\\.SYMDEF|SYMDEF)")
         list(APPEND _objects ${_extracted})
         math(EXPR _index "${_index} + 1")
     endforeach()
