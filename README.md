@@ -168,6 +168,64 @@ fh->seek(-4, lochfolk::whence::end);
   `virtual_file_system::error` for invalid virtual paths, and as
   `std::system_error` when a host file cannot be opened.
 
+## Building
+
+The build system is CMake; the build files of the previous build system have been removed.
+
+### Requirements
+
+- CMake >= 3.20
+- A C++20 compiler
+- Ninja (recommended) or Make
+- Python 3, only when `lochfolk_build_test` is enabled (it generates the test archives)
+
+### Dependencies
+
+minizip-ng 4.2.2 is vendored as a git submodule at `third_party/minizip-ng`
+(initialize it with `git submodule update --init --recursive`, or clone the
+repository with `--recurse-submodules`) and is built without OpenSSL or
+WinZip-AES support, so no OpenSSL installation is required. zlib comes from the system on Linux and macOS (on Windows it is
+fetched automatically). GoogleTest is taken from the system by default; with
+`-Dlochfolk_prefer_system_gtest=OFF` it is fetched instead (googletest v1.14.0). GoogleTest is only required when the tests are enabled.
+
+### Quickstart
+
+```sh
+git submodule update --init --recursive
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -Dlochfolk_build_test=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+Static libraries are built by default; pass `-Dlochfolk_shared=ON` to build a
+shared library instead. Shared builds enable link-time optimization by default;
+pass `-Dlochfolk_enable_lto=OFF` to disable it.
+
+### Installing
+
+```sh
+cmake --install build --prefix /path/to/prefix
+```
+
+Public headers are installed under `<prefix>/include/lochfolk/` and the library
+under `<prefix>/lib/` (on Windows the shared library is
+`<prefix>/bin/lochfolk.dll`).
+
+The static library embeds the vendored minizip-ng objects, so static consumers
+do not need a separate minizip-ng package. On Linux and macOS the system zlib
+still has to be linked (`-lz`); on Windows the zlib archive fetched by
+minizip-ng is embedded as well.
+
+### Options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `lochfolk_shared` | `OFF` | Build a shared library instead of a static one. |
+| `lochfolk_enable_lto` | `ON` for shared builds, `OFF` for static | Enable link-time optimization. |
+| `lochfolk_build_test` | `OFF` | Build and register the unit tests (requires Python 3 and GoogleTest). |
+| `lochfolk_prefer_system_gtest` | `ON` | Use the system GoogleTest; `OFF` fetches googletest v1.14.0. |
+| `lochfolk_enable_asan` | `OFF` | Enable AddressSanitizer (GCC/Clang only; unsupported on MSVC). |
+
 ## Acknowledgments
 This library uses the following third party libraries:
 
