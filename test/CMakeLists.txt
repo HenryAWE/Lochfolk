@@ -20,7 +20,8 @@ else()
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
         GIT_TAG v1.14.0
-        GIT_SHALLOW TRUE)
+        GIT_SHALLOW TRUE
+    )
     FetchContent_MakeAvailable(googletest)
     set(BUILD_SHARED_LIBS ${_lochfolk_build_shared_libs})
     unset(_lochfolk_build_shared_libs)
@@ -38,9 +39,11 @@ set(LOCHFOLK_TEST_DATA_DIR ${CMAKE_CURRENT_BINARY_DIR}/test_vfs_data)
 set(LOCHFOLK_TEST_STAMP ${CMAKE_CURRENT_BINARY_DIR}/test-data.stamp)
 
 file(GLOB_RECURSE LOCHFOLK_TEST_ARCHIVE_FILES CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/archive/*)
+    ${CMAKE_CURRENT_SOURCE_DIR}/archive/*
+)
 file(GLOB_RECURSE LOCHFOLK_TEST_DIR_FILES CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/dir/*)
+    ${CMAKE_CURRENT_SOURCE_DIR}/dir/*
+)
 
 add_custom_command(
     OUTPUT ${LOCHFOLK_TEST_STAMP}
@@ -67,7 +70,8 @@ add_custom_command(
         ${CMAKE_CURRENT_SOURCE_DIR}/script/make_archive.py
         ${CMAKE_CURRENT_SOURCE_DIR}/script/make_unsafe_archives.py
     COMMENT "Staging VFS unit-test fixtures"
-    VERBATIM)
+    VERBATIM
+)
 
 add_custom_target(lochfolk_test_data ALL DEPENDS ${LOCHFOLK_TEST_STAMP})
 
@@ -86,4 +90,5 @@ add_dependencies(test_vfs lochfolk_test_data)
 add_test(
     NAME test_vfs
     COMMAND test_vfs
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)

@@ -4,14 +4,16 @@ project(
     Lochfolk
     VERSION 0.3.0
     DESCRIPTION "Yet another C++ virtual filesystem library"
-    LANGUAGES C CXX)
+    LANGUAGES C CXX
+)
 
 # The previous build system defaulted to a release build; keep that behaviour
 # for the common single-configuration generators (Ninja, Makefiles, ...).
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-        Debug Release RelWithDebInfo MinSizeRel)
+        Debug Release RelWithDebInfo MinSizeRel
+    )
 endif()
 
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -26,9 +28,11 @@ include(GNUInstallDirs)
 option(BUILD_SHARED_LIBS "Build Lochfolk as a shared library" OFF)
 option(lochfolk_build_test "Build the Lochfolk unit tests" OFF)
 option(lochfolk_prefer_system_gtest
-    "Use the system GoogleTest instead of fetching version 1.14.0" ON)
+    "Use the system GoogleTest instead of fetching version 1.14.0" ON
+)
 option(lochfolk_enable_asan
-    "Build with AddressSanitizer (GCC/Clang only)" OFF)
+    "Build with AddressSanitizer (GCC/Clang only)" OFF
+)
 
 if(lochfolk_build_test)
     enable_testing()
@@ -86,7 +90,8 @@ FetchContent_Declare(
     minizip_ng
     GIT_REPOSITORY https://github.com/zlib-ng/minizip-ng.git
     GIT_TAG 4.2.2
-    GIT_SHALLOW TRUE)
+    GIT_SHALLOW TRUE
+)
 
 # Always build minizip-ng as a static library, even when Lochfolk itself is
 # shared: it is linked into liblochfolk.so / lochfolk.dll and must not become a
@@ -103,11 +108,13 @@ set_target_properties(minizip PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Lochfolk includes minizip-ng headers as <minizip/...>, matching the layout
 # of an installed minizip-ng. Recreate that layout for the fetched sources.
 set(LOCHFOLK_MINIZIP_SHIM_INCLUDE
-    ${CMAKE_CURRENT_BINARY_DIR}/third_party/minizip/include)
+    ${CMAKE_CURRENT_BINARY_DIR}/third_party/minizip/include
+)
 file(MAKE_DIRECTORY ${LOCHFOLK_MINIZIP_SHIM_INCLUDE}/minizip)
 file(COPY ${minizip_ng_SOURCE_DIR}/
     DESTINATION ${LOCHFOLK_MINIZIP_SHIM_INCLUDE}/minizip
-    FILES_MATCHING PATTERN "*.h")
+    FILES_MATCHING PATTERN "*.h"
+)
 
 # ---------------------------------------------------------------------------
 # Lochfolk
@@ -124,7 +131,8 @@ add_library(lochfolk
     src/fh/crlf.cpp
     src/fh/file_posix.cpp
     src/fh/file_win32.cpp
-    src/fh/streambuf.cpp)
+    src/fh/streambuf.cpp
+)
 add_library(Lochfolk::lochfolk ALIAS lochfolk)
 
 target_compile_features(lochfolk PUBLIC cxx_std_20)
@@ -135,7 +143,8 @@ target_include_directories(lochfolk
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${LOCHFOLK_MINIZIP_SHIM_INCLUDE})
+        ${LOCHFOLK_MINIZIP_SHIM_INCLUDE}
+)
 
 target_compile_definitions(lochfolk PRIVATE LOCHFOLK_BUILD)
 if(BUILD_SHARED_LIBS)
@@ -146,7 +155,8 @@ target_compile_options(lochfolk PRIVATE ${LOCHFOLK_WARNING_OPTIONS})
 
 set_target_properties(lochfolk PROPERTIES
     CXX_VISIBILITY_PRESET hidden
-    VISIBILITY_INLINES_HIDDEN ON)
+    VISIBILITY_INLINES_HIDDEN ON
+)
 
 target_link_libraries(lochfolk PRIVATE minizip)
 
@@ -165,10 +175,12 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
         TARGETS lochfolk
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
 
     install(
         DIRECTORY include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        FILES_MATCHING PATTERN "*.hpp")
+        FILES_MATCHING PATTERN "*.hpp"
+    )
 endif()
