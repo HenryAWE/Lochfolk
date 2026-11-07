@@ -208,6 +208,11 @@ Public headers are installed under `<prefix>/include/lochfolk/` and the library
 under `<prefix>/lib/` (on Windows the shared library is
 `<prefix>/bin/lochfolk.dll`).
 
+The static library embeds the vendored minizip-ng objects, so static consumers
+do not need a separate minizip-ng package. On Linux and macOS the system zlib
+still has to be linked (`-lz`); on Windows the zlib archive fetched by
+minizip-ng is embedded as well.
+
 ### Options
 
 | Option | Default | Description |

@@ -167,6 +167,52 @@ set_target_properties(lochfolk PROPERTIES
 
 target_link_libraries(lochfolk PRIVATE minizip)
 
+# Vendored static dependencies are merged into the static library, so an
+# installed liblochfolk.a is usable without a separate minizip-ng package. On
+# Linux and macOS zlib stays a system shared library that static consumers
+# still have to link; on Windows minizip-ng fetches zlib statically and that
+# archive is embedded as well.
+if(NOT lochfolk_shared)
+    set(_bundle_zlib_target)
+    if(TARGET zlib-ng)
+        set(_bundle_zlib_target zlib-ng)
+    elseif(TARGET zlibstatic)
+        set(_bundle_zlib_target zlibstatic)
+    endif()
+    if(_bundle_zlib_target)
+        get_target_property(_bundle_zlib_type ${_bundle_zlib_target} TYPE)
+        if(NOT _bundle_zlib_type STREQUAL "STATIC_LIBRARY")
+            set(_bundle_zlib_target)
+        endif()
+    endif()
+
+    set(_bundle_args
+        "-DLOCHFOLK_OUTPUT=$<TARGET_FILE:lochfolk>"
+        "-DLOCHFOLK_MINIZIP=$<TARGET_FILE:minizip>"
+        "-DLOCHFOLK_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/bundled_static"
+        "-DLOCHFOLK_AR=${CMAKE_AR}"
+        "-DLOCHFOLK_RANLIB=${CMAKE_RANLIB}"
+    )
+    if(MSVC)
+        list(APPEND _bundle_args "-DLOCHFOLK_MSVC=TRUE")
+    endif()
+    if(_bundle_zlib_target)
+        list(APPEND _bundle_args
+            "-DLOCHFOLK_ZLIB=$<TARGET_FILE:${_bundle_zlib_target}>"
+        )
+        add_dependencies(lochfolk ${_bundle_zlib_target})
+    endif()
+
+    add_custom_command(
+        TARGET lochfolk
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} ${_bundle_args}
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/bundle_static_archive.cmake"
+        COMMENT "Bundling minizip-ng into the static library"
+        VERBATIM
+    )
+endif()
+
 if(lochfolk_build_test)
     add_subdirectory(test)
 endif()
