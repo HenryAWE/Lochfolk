@@ -181,15 +181,17 @@ The build system is CMake; the build files of the previous build system have bee
 
 ### Dependencies
 
-minizip-ng 4.2.2 is downloaded automatically by CMake (via `FetchContent`) and
-built without OpenSSL or WinZip-AES support, so no OpenSSL installation is
-required. zlib comes from the system on Linux and macOS (on Windows it is
+minizip-ng 4.2.2 is vendored as a git submodule at `third_party/minizip-ng`
+(initialize it with `git submodule update --init --recursive`, or clone the
+repository with `--recurse-submodules`) and is built without OpenSSL or
+WinZip-AES support, so no OpenSSL installation is required. zlib comes from the system on Linux and macOS (on Windows it is
 fetched automatically). GoogleTest is taken from the system by default; with
 `-Dlochfolk_prefer_system_gtest=OFF` it is fetched instead (googletest v1.14.0). GoogleTest is only required when the tests are enabled.
 
 ### Quickstart
 
 ```sh
+git submodule update --init --recursive
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -Dlochfolk_build_test=ON
 cmake --build build
 ctest --test-dir build --output-on-failure

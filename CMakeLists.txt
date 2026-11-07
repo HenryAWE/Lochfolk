@@ -55,7 +55,16 @@ endif()
 # ---------------------------------------------------------------------------
 # minizip-ng (ZIP archive support)
 # ---------------------------------------------------------------------------
-include(FetchContent)
+# minizip-ng is vendored as a git submodule at third_party/minizip-ng.
+set(LOCHFOLK_MINIZIP_SOURCE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/minizip-ng
+)
+if(NOT EXISTS ${LOCHFOLK_MINIZIP_SOURCE_DIR}/CMakeLists.txt)
+    message(FATAL_ERROR
+        "third_party/minizip-ng is missing. Initialize the submodules with:"
+        "\n    git submodule update --init --recursive"
+    )
+endif()
 
 # Lochfolk only reads ZIP archives and never passes a password to minizip-ng,
 # so the OpenSSL-backed crypto backend (and WinZip AES) is dead code for us.
@@ -86,20 +95,16 @@ set(MZ_SANITIZER OFF CACHE STRING "minizip-ng sanitizer" FORCE)
 # Lochfolk install tree.
 set(SKIP_INSTALL_ALL ON)
 
-FetchContent_Declare(
-    minizip_ng
-    GIT_REPOSITORY https://github.com/zlib-ng/minizip-ng.git
-    GIT_TAG 4.2.2
-    GIT_SHALLOW TRUE
-)
-
 # Always build minizip-ng as a static library, even when Lochfolk itself is
 # shared: it is linked into liblochfolk.so / lochfolk.dll and must not become a
 # public runtime dependency. minizip-ng itself still uses CMake's
-# BUILD_SHARED_LIBS, so force that OFF around the fetch.
+# BUILD_SHARED_LIBS, so force that OFF around the add_subdirectory().
 set(_lochfolk_build_shared_libs ${BUILD_SHARED_LIBS})
 set(BUILD_SHARED_LIBS OFF)
-FetchContent_MakeAvailable(minizip_ng)
+add_subdirectory(
+    ${LOCHFOLK_MINIZIP_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/third_party/minizip-ng
+)
 set(BUILD_SHARED_LIBS ${_lochfolk_build_shared_libs})
 unset(_lochfolk_build_shared_libs)
 
@@ -113,12 +118,12 @@ set_target_properties(minizip PROPERTIES
 )
 
 # Lochfolk includes minizip-ng headers as <minizip/...>, matching the layout
-# of an installed minizip-ng. Recreate that layout for the fetched sources.
+# of an installed minizip-ng. Recreate that layout for the vendored sources.
 set(LOCHFOLK_MINIZIP_SHIM_INCLUDE
     ${CMAKE_CURRENT_BINARY_DIR}/third_party/minizip/include
 )
 file(MAKE_DIRECTORY ${LOCHFOLK_MINIZIP_SHIM_INCLUDE}/minizip)
-file(COPY ${minizip_ng_SOURCE_DIR}/
+file(COPY ${LOCHFOLK_MINIZIP_SOURCE_DIR}/
     DESTINATION ${LOCHFOLK_MINIZIP_SHIM_INCLUDE}/minizip
     FILES_MATCHING PATTERN "*.h"
 )
