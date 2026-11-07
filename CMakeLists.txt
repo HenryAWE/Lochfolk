@@ -25,7 +25,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include(GNUInstallDirs)
 
-option(BUILD_SHARED_LIBS "Build Lochfolk as a shared library" OFF)
+option(lochfolk_shared "Build Lochfolk as a shared library" OFF)
 option(lochfolk_build_test "Build the Lochfolk unit tests" OFF)
 option(lochfolk_prefer_system_gtest
     "Use the system GoogleTest instead of fetching version 1.14.0" ON
@@ -95,7 +95,8 @@ FetchContent_Declare(
 
 # Always build minizip-ng as a static library, even when Lochfolk itself is
 # shared: it is linked into liblochfolk.so / lochfolk.dll and must not become a
-# public runtime dependency.
+# public runtime dependency. minizip-ng itself still uses CMake's
+# BUILD_SHARED_LIBS, so force that OFF around the fetch.
 set(_lochfolk_build_shared_libs ${BUILD_SHARED_LIBS})
 set(BUILD_SHARED_LIBS OFF)
 FetchContent_MakeAvailable(minizip_ng)
@@ -119,7 +120,13 @@ file(COPY ${minizip_ng_SOURCE_DIR}/
 # ---------------------------------------------------------------------------
 # Lochfolk
 # ---------------------------------------------------------------------------
-add_library(lochfolk
+if(lochfolk_shared)
+    set(LOCHFOLK_LIBRARY_TYPE SHARED)
+else()
+    set(LOCHFOLK_LIBRARY_TYPE STATIC)
+endif()
+
+add_library(lochfolk ${LOCHFOLK_LIBRARY_TYPE}
     src/archive.cpp
     src/errmsg.cpp
     src/file_node.cpp
@@ -147,7 +154,7 @@ target_include_directories(lochfolk
 )
 
 target_compile_definitions(lochfolk PRIVATE LOCHFOLK_BUILD)
-if(BUILD_SHARED_LIBS)
+if(lochfolk_shared)
     target_compile_definitions(lochfolk PUBLIC LOCHFOLK_SHARED)
 endif()
 

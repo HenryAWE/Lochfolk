@@ -12,8 +12,9 @@ else()
         set(gtest_force_shared_crt ON CACHE BOOL "Use the shared CRT" FORCE)
     endif()
 
-    # Build GoogleTest as a static library regardless of BUILD_SHARED_LIBS, so
-    # the test executables never need a GoogleTest runtime next to them.
+    # Build GoogleTest as a static library regardless of the surrounding
+    # BUILD_SHARED_LIBS value, so the test executables never need a GoogleTest
+    # runtime next to them.
     set(_lochfolk_build_shared_libs ${BUILD_SHARED_LIBS})
     set(BUILD_SHARED_LIBS OFF)
     FetchContent_Declare(
