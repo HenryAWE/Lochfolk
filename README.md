@@ -177,7 +177,7 @@ The build system is CMake; the build files of the previous build system have bee
 - CMake >= 3.20
 - A C++20 compiler
 - Ninja (recommended) or Make
-- Python 3 (only needed when the tests are enabled; used to generate the test archives)
+- Python 3, only when `lochfolk_build_test` is enabled (it generates the test archives)
 
 ### Dependencies
 
@@ -185,12 +185,12 @@ minizip-ng 4.2.2 is downloaded automatically by CMake (via `FetchContent`) and
 built without OpenSSL or WinZip-AES support, so no OpenSSL installation is
 required. zlib comes from the system on Linux and macOS (on Windows it is
 fetched automatically). GoogleTest is taken from the system by default; with
-`-Dlochfolk_prefer_system_gtest=OFF` it is fetched instead (googletest v1.14.0).
+`-Dlochfolk_prefer_system_gtest=OFF` it is fetched instead (googletest v1.14.0). GoogleTest is only required when the tests are enabled.
 
 ### Quickstart
 
 ```sh
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -Dlochfolk_build_test=ON
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
@@ -213,7 +213,7 @@ under `<prefix>/lib/` (on Windows the shared library is
 | Option | Default | Description |
 | --- | --- | --- |
 | `BUILD_SHARED_LIBS` | `OFF` | Build a shared library instead of a static one. |
-| `BUILD_TESTING` | `ON` | Build the tests. |
+| `lochfolk_build_test` | `OFF` | Build and register the unit tests (requires Python 3 and GoogleTest). |
 | `lochfolk_prefer_system_gtest` | `ON` | Use the system GoogleTest; `OFF` fetches googletest v1.14.0. |
 | `lochfolk_enable_asan` | `OFF` | Enable AddressSanitizer (GCC/Clang only; unsupported on MSVC). |
 

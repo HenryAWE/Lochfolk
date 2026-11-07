@@ -21,14 +21,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # test executables.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-include(CTest)
 include(GNUInstallDirs)
 
 option(BUILD_SHARED_LIBS "Build Lochfolk as a shared library" OFF)
+option(lochfolk_build_test "Build the Lochfolk unit tests" OFF)
 option(lochfolk_prefer_system_gtest
     "Use the system GoogleTest instead of fetching version 1.14.0" ON)
 option(lochfolk_enable_asan
     "Build with AddressSanitizer (GCC/Clang only)" OFF)
+
+if(lochfolk_build_test)
+    enable_testing()
+endif()
 
 if(lochfolk_enable_asan)
     if(MSVC)
@@ -87,19 +91,11 @@ FetchContent_Declare(
 # Always build minizip-ng as a static library, even when Lochfolk itself is
 # shared: it is linked into liblochfolk.so / lochfolk.dll and must not become a
 # public runtime dependency.
-#
-# minizip-ng forcibly disables the global BUILD_TESTING cache variable when it
-# fetches zlib-ng (it does that on Windows, where zlib is not provided by the
-# system). Preserve Lochfolk's own value across the subproject configuration.
-set(_lochfolk_build_testing ${BUILD_TESTING})
 set(_lochfolk_build_shared_libs ${BUILD_SHARED_LIBS})
 set(BUILD_SHARED_LIBS OFF)
 FetchContent_MakeAvailable(minizip_ng)
 set(BUILD_SHARED_LIBS ${_lochfolk_build_shared_libs})
-set(BUILD_TESTING ${_lochfolk_build_testing} CACHE BOOL
-    "Build the testing tree." FORCE)
 unset(_lochfolk_build_shared_libs)
-unset(_lochfolk_build_testing)
 
 # Allow the static minizip-ng objects to be linked into a shared Lochfolk.
 set_target_properties(minizip PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -154,7 +150,7 @@ set_target_properties(lochfolk PROPERTIES
 
 target_link_libraries(lochfolk PRIVATE minizip)
 
-if(BUILD_TESTING)
+if(lochfolk_build_test)
     add_subdirectory(test)
 endif()
 

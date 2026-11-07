@@ -32,6 +32,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release
           -DBUILD_SHARED_LIBS=${{ matrix.shared }}
           -Dlochfolk_prefer_system_gtest=OFF
+          -Dlochfolk_build_test=ON
 
       - name: Build
         run: cmake --build build --verbose
@@ -73,7 +74,8 @@ jobs:
             -DBUILD_SHARED_LIBS=${{ matrix.shared }} \
             -DCMAKE_C_COMPILER=clang-18 \
             -DCMAKE_CXX_COMPILER=clang++-18 \
-            -Dlochfolk_enable_asan=ON
+            -Dlochfolk_enable_asan=ON \
+            -Dlochfolk_build_test=ON
 
       - name: Build
         run: cmake --build build --verbose
@@ -114,7 +116,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=${{ matrix.shared }} \
             -DCMAKE_C_COMPILER=gcc-14 \
-            -DCMAKE_CXX_COMPILER=g++-14
+            -DCMAKE_CXX_COMPILER=g++-14 \
+            -Dlochfolk_build_test=ON
 
       - name: Build
         run: cmake --build build --verbose
@@ -152,7 +155,8 @@ jobs:
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=${{ matrix.shared }} \
-            -DCMAKE_PREFIX_PATH="$(brew --prefix)"
+            -DCMAKE_PREFIX_PATH="$(brew --prefix)" \
+            -Dlochfolk_build_test=ON
 
       - name: Build
         run: cmake --build build --verbose
