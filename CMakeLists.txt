@@ -26,6 +26,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 include(GNUInstallDirs)
 
 option(lochfolk_shared "Build Lochfolk as a shared library" OFF)
+option(lochfolk_enable_lto
+    "Enable link-time optimization (default: ON for shared builds)" ${lochfolk_shared}
+)
 option(lochfolk_build_test "Build the Lochfolk unit tests" OFF)
 option(lochfolk_prefer_system_gtest
     "Use the system GoogleTest instead of fetching version 1.14.0" ON
@@ -50,6 +53,24 @@ if(MSVC)
     set(LOCHFOLK_WARNING_OPTIONS /W3 /WX)
 else()
     set(LOCHFOLK_WARNING_OPTIONS -Wall -Werror)
+endif()
+
+# Shared builds enable LTO by default. Fall back to a normal build when the
+# toolchain does not support it, so exotic compilers still configure.
+set(LOCHFOLK_LTO_ENABLED OFF)
+if(lochfolk_enable_lto)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT _lochfolk_ipo_supported OUTPUT _lochfolk_ipo_output)
+    if(_lochfolk_ipo_supported)
+        set(LOCHFOLK_LTO_ENABLED ON)
+    else()
+        message(WARNING
+            "LTO was requested but is not supported by the toolchain; "
+            "building without LTO.\n${_lochfolk_ipo_output}"
+        )
+    endif()
+    unset(_lochfolk_ipo_supported)
+    unset(_lochfolk_ipo_output)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -174,6 +195,7 @@ target_compile_options(lochfolk PRIVATE ${LOCHFOLK_WARNING_OPTIONS})
 set_target_properties(lochfolk PROPERTIES
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON
+    INTERPROCEDURAL_OPTIMIZATION ${LOCHFOLK_LTO_ENABLED}
 )
 
 target_link_libraries(lochfolk PRIVATE minizip)

@@ -198,7 +198,8 @@ ctest --test-dir build --output-on-failure
 ```
 
 Static libraries are built by default; pass `-Dlochfolk_shared=ON` to build a
-shared library instead.
+shared library instead. Shared builds enable link-time optimization by default;
+pass `-Dlochfolk_enable_lto=OFF` to disable it.
 
 ### Installing
 
@@ -220,6 +221,7 @@ minizip-ng is embedded as well.
 | Option | Default | Description |
 | --- | --- | --- |
 | `lochfolk_shared` | `OFF` | Build a shared library instead of a static one. |
+| `lochfolk_enable_lto` | `ON` for shared builds, `OFF` for static | Enable link-time optimization. |
 | `lochfolk_build_test` | `OFF` | Build and register the unit tests (requires Python 3 and GoogleTest). |
 | `lochfolk_prefer_system_gtest` | `ON` | Use the system GoogleTest; `OFF` fetches googletest v1.14.0. |
 | `lochfolk_enable_asan` | `OFF` | Enable AddressSanitizer (GCC/Clang only; unsupported on MSVC). |

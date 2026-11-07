@@ -82,11 +82,17 @@ add_custom_target(lochfolk_test_data ALL DEPENDS ${LOCHFOLK_TEST_STAMP})
 add_executable(test_path test_path.cpp)
 target_link_libraries(test_path PRIVATE Lochfolk::lochfolk GTest::gtest_main)
 target_compile_options(test_path PRIVATE ${LOCHFOLK_WARNING_OPTIONS})
+set_target_properties(test_path PROPERTIES
+    INTERPROCEDURAL_OPTIMIZATION ${LOCHFOLK_LTO_ENABLED}
+)
 add_test(NAME test_path COMMAND test_path)
 
 add_executable(test_vfs test_vfs.cpp)
 target_link_libraries(test_vfs PRIVATE Lochfolk::lochfolk GTest::gtest_main)
 target_compile_options(test_vfs PRIVATE ${LOCHFOLK_WARNING_OPTIONS})
+set_target_properties(test_vfs PROPERTIES
+    INTERPROCEDURAL_OPTIMIZATION ${LOCHFOLK_LTO_ENABLED}
+)
 add_dependencies(test_vfs lochfolk_test_data)
 add_test(
     NAME test_vfs
