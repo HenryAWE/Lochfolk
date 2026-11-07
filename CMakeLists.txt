@@ -103,8 +103,14 @@ FetchContent_MakeAvailable(minizip_ng)
 set(BUILD_SHARED_LIBS ${_lochfolk_build_shared_libs})
 unset(_lochfolk_build_shared_libs)
 
-# Allow the static minizip-ng objects to be linked into a shared Lochfolk.
-set_target_properties(minizip PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# minizip-ng is an implementation detail: build it with hidden visibility so
+# its symbols stay out of the dynamic symbol table of liblochfolk.so and of any
+# shared library that links the bundled static archive. PIC lets the static
+# objects be linked into a shared Lochfolk.
+set_target_properties(minizip PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    C_VISIBILITY_PRESET hidden
+)
 
 # Lochfolk includes minizip-ng headers as <minizip/...>, matching the layout
 # of an installed minizip-ng. Recreate that layout for the fetched sources.
@@ -183,6 +189,11 @@ if(NOT lochfolk_shared)
         get_target_property(_bundle_zlib_type ${_bundle_zlib_target} TYPE)
         if(NOT _bundle_zlib_type STREQUAL "STATIC_LIBRARY")
             set(_bundle_zlib_target)
+        else()
+            # Keep the embedded zlib symbols hidden as well.
+            set_target_properties(${_bundle_zlib_target} PROPERTIES
+                C_VISIBILITY_PRESET hidden
+            )
         endif()
     endif()
 
