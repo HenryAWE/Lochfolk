@@ -138,17 +138,6 @@ set_target_properties(minizip PROPERTIES
     C_VISIBILITY_PRESET hidden
 )
 
-# Lochfolk includes minizip-ng headers as <minizip/...>, matching the layout
-# of an installed minizip-ng. Recreate that layout for the vendored sources.
-set(LOCHFOLK_MINIZIP_SHIM_INCLUDE
-    ${CMAKE_CURRENT_BINARY_DIR}/third_party/minizip/include
-)
-file(MAKE_DIRECTORY ${LOCHFOLK_MINIZIP_SHIM_INCLUDE}/minizip)
-file(COPY ${LOCHFOLK_MINIZIP_SOURCE_DIR}/
-    DESTINATION ${LOCHFOLK_MINIZIP_SHIM_INCLUDE}/minizip
-    FILES_MATCHING PATTERN "*.h"
-)
-
 # ---------------------------------------------------------------------------
 # Lochfolk
 # ---------------------------------------------------------------------------
@@ -182,7 +171,6 @@ target_include_directories(lochfolk
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${LOCHFOLK_MINIZIP_SHIM_INCLUDE}
 )
 
 target_compile_definitions(lochfolk PRIVATE LOCHFOLK_BUILD)
@@ -198,6 +186,10 @@ set_target_properties(lochfolk PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION ${LOCHFOLK_LTO_ENABLED}
 )
 
+# The minizip target publishes the vendored source tree and its generated
+# mz_config.h as build-interface include directories; Lochfolk includes the
+# headers directly (<mz.h>, <mz_zip.h>, ...), so no installed-layout copy is
+# needed.
 target_link_libraries(lochfolk PRIVATE minizip)
 
 # Vendored static dependencies are merged into the static library, so an

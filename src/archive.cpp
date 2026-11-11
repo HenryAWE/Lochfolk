@@ -2,9 +2,9 @@
 #include <cassert>
 #include <span>
 #include <filesystem>
-#include <minizip/mz.h>
-#include <minizip/mz_zip.h>
-#include <minizip/mz_strm_os.h>
+#include <mz.h>
+#include <mz_zip.h>
+#include <mz_strm_os.h>
 #include <lochfolk/io.hpp>
 #include "fh/bytes.hpp"
 
