@@ -87,6 +87,21 @@ if(NOT EXISTS ${LOCHFOLK_MINIZIP_SOURCE_DIR}/CMakeLists.txt)
     )
 endif()
 
+# minizip-ng resolves its compression backend at configure time: it prefers
+# zlib-ng (native API) over classic zlib and otherwise fetches zlib-ng from
+# GitHub. Lochfolk vendors the pinned zlib-ng as a submodule instead, so every
+# platform builds the same version offline. The minizip-ng options below make
+# it take its fetch path and point that path at the submodule.
+set(LOCHFOLK_ZLIB_NG_SOURCE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib-ng
+)
+if(NOT EXISTS ${LOCHFOLK_ZLIB_NG_SOURCE_DIR}/CMakeLists.txt)
+    message(FATAL_ERROR
+        "third_party/zlib-ng is missing. Initialize the submodules with:"
+        "\n    git submodule update --init --recursive"
+    )
+endif()
+
 # Lochfolk only reads ZIP archives and never passes a password to minizip-ng,
 # so the OpenSSL-backed crypto backend (and WinZip AES) is dead code for us.
 # With MZ_OPENSSL=OFF and MZ_WZAES=OFF minizip-ng builds with
@@ -96,7 +111,8 @@ endif()
 # open anyway) become unavailable, at the cost of not pulling in OpenSSL.
 #
 # Every optional codec Lochfolk does not use is disabled as well, so the
-# resulting dependency set is minizip-ng + zlib (plus GoogleTest for tests).
+# resulting dependency set is minizip-ng + zlib-ng (plus GoogleTest for
+# tests).
 set(MZ_OPENSSL OFF CACHE BOOL "Enable OpenSSL for encryption" FORCE)
 set(MZ_WZAES OFF CACHE BOOL "Enable WinZIP AES encryption" FORCE)
 set(MZ_LZMA OFF CACHE BOOL "Enable LZMA/XZ compression" FORCE)
@@ -105,7 +121,18 @@ set(MZ_ZSTD OFF CACHE BOOL "Enable ZSTD compression" FORCE)
 set(MZ_PPMD OFF CACHE BOOL "Enable PPMd compression" FORCE)
 set(MZ_LIBCOMP OFF CACHE BOOL "Enable Apple's compression framework" FORCE)
 set(MZ_LIBBSD OFF CACHE BOOL "Use libbsd for random numbers" FORCE)
-set(MZ_FORCE_FETCH_LIBS OFF CACHE BOOL "Always fetch third-party libraries" FORCE)
+
+# Do not let minizip-ng probe the system for zlib or zlib-ng: force its fetch
+# path and redirect that path to the vendored zlib-ng tree. MZ_FETCH_LIBS is
+# required in addition to MZ_FORCE_FETCH_LIBS because it defaults to OFF
+# outside Windows and gates the fetch branch; without it minizip-ng would
+# build without zlib support at all.
+set(MZ_FETCH_LIBS ON CACHE BOOL "Fetch third-party libraries" FORCE)
+set(MZ_FORCE_FETCH_LIBS ON CACHE BOOL "Always fetch third-party libraries" FORCE)
+set(FETCHCONTENT_SOURCE_DIR_ZLIB ${LOCHFOLK_ZLIB_NG_SOURCE_DIR}
+    CACHE PATH "Vendored zlib-ng source tree used by minizip-ng" FORCE
+)
+
 set(MZ_BUILD_TESTS OFF CACHE BOOL "Build minizip-ng command line tools" FORCE)
 set(MZ_BUILD_UNIT_TESTS OFF CACHE BOOL "Build minizip-ng unit tests" FORCE)
 set(MZ_BUILD_FUZZ_TESTS OFF CACHE BOOL "Build minizip-ng fuzzers" FORCE)
@@ -137,6 +164,23 @@ set_target_properties(minizip PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     C_VISIBILITY_PRESET hidden
 )
+
+# zlib-ng is an implementation detail as well. PIC lets its static objects be
+# linked into liblochfolk.so (shared builds) and into downstream shared
+# libraries that embed liblochfolk.a; hidden visibility keeps the zng_*
+# symbols out of the dynamic symbol table. minizip-ng does not set either
+# itself because it normally links a system zlib.
+if(TARGET zlib-ng)
+    set_target_properties(zlib-ng PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        C_VISIBILITY_PRESET hidden
+    )
+else()
+    message(FATAL_ERROR
+        "minizip-ng did not configure the vendored zlib-ng target. Expected "
+        "FETCHCONTENT_SOURCE_DIR_ZLIB to be honoured."
+    )
+endif()
 
 # ---------------------------------------------------------------------------
 # Lochfolk
@@ -193,10 +237,10 @@ set_target_properties(lochfolk PROPERTIES
 target_link_libraries(lochfolk PRIVATE minizip)
 
 # Vendored static dependencies are merged into the static library, so an
-# installed liblochfolk.a is usable without a separate minizip-ng package. On
-# Linux and macOS zlib stays a system shared library that static consumers
-# still have to link; on Windows minizip-ng fetches zlib statically and that
-# archive is embedded as well.
+# installed liblochfolk.a is self-contained: consumers need neither a
+# minizip-ng package nor zlib/zlib-ng. Shared builds embed the same static
+# archives in liblochfolk.so / lochfolk.dll, so they have no zlib runtime
+# dependency either.
 if(NOT lochfolk_shared)
     set(_bundle_zlib_target)
     if(TARGET zlib-ng)
@@ -208,11 +252,6 @@ if(NOT lochfolk_shared)
         get_target_property(_bundle_zlib_type ${_bundle_zlib_target} TYPE)
         if(NOT _bundle_zlib_type STREQUAL "STATIC_LIBRARY")
             set(_bundle_zlib_target)
-        else()
-            # Keep the embedded zlib symbols hidden as well.
-            set_target_properties(${_bundle_zlib_target} PROPERTIES
-                C_VISIBILITY_PRESET hidden
-            )
         endif()
     endif()
 
