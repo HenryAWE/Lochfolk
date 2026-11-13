@@ -203,7 +203,9 @@ ctest --test-dir build --output-on-failure
 
 Static libraries are built by default; pass `-Dlochfolk_shared=ON` to build a
 shared library instead. Shared builds enable link-time optimization by default;
-pass `-Dlochfolk_enable_lto=OFF` to disable it.
+pass `-Dlochfolk_enable_lto=OFF` to disable it. The vendored minizip-ng and
+zlib-ng targets follow the same LTO setting, so shared builds optimize the whole
+library, dependencies included.
 
 ### Installing
 

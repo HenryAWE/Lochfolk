@@ -159,21 +159,25 @@ unset(_lochfolk_build_shared_libs)
 # minizip-ng is an implementation detail: build it with hidden visibility so
 # its symbols stay out of the dynamic symbol table of liblochfolk.so and of any
 # shared library that links the bundled static archive. PIC lets the static
-# objects be linked into a shared Lochfolk.
+# objects be linked into a shared Lochfolk. It also uses the project's LTO
+# setting, so the vendored C code is optimized together with Lochfolk.
 set_target_properties(minizip PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     C_VISIBILITY_PRESET hidden
+    INTERPROCEDURAL_OPTIMIZATION ${LOCHFOLK_LTO_ENABLED}
 )
 
 # zlib-ng is an implementation detail as well. PIC lets its static objects be
 # linked into liblochfolk.so (shared builds) and into downstream shared
 # libraries that embed liblochfolk.a; hidden visibility keeps the zng_*
 # symbols out of the dynamic symbol table. minizip-ng does not set either
-# itself because it normally links a system zlib.
+# itself because it normally links a system zlib. Like minizip-ng it follows
+# the project's LTO setting.
 if(TARGET zlib-ng)
     set_target_properties(zlib-ng PROPERTIES
         POSITION_INDEPENDENT_CODE ON
         C_VISIBILITY_PRESET hidden
+        INTERPROCEDURAL_OPTIMIZATION ${LOCHFOLK_LTO_ENABLED}
     )
 else()
     message(FATAL_ERROR
