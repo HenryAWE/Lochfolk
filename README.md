@@ -181,12 +181,16 @@ The build system is CMake; the build files of the previous build system have bee
 
 ### Dependencies
 
-minizip-ng 4.2.2 is vendored as a git submodule at `third_party/minizip-ng`
-(initialize it with `git submodule update --init --recursive`, or clone the
-repository with `--recurse-submodules`) and is built without OpenSSL or
-WinZip-AES support, so no OpenSSL installation is required. zlib comes from the system on Linux and macOS (on Windows it is
-fetched automatically). GoogleTest is taken from the system by default; with
-`-Dlochfolk_prefer_system_gtest=OFF` it is fetched instead (googletest v1.14.0). GoogleTest is only required when the tests are enabled.
+minizip-ng 4.2.2 (`third_party/minizip-ng`) and zlib-ng 2.3.3
+(`third_party/zlib-ng`) are vendored as git submodules; initialize them with
+`git submodule update --init --recursive`, or clone the repository with
+`--recurse-submodules`. Both are built from the vendored sources, so no system
+zlib or zlib development package is needed and configuring works offline.
+minizip-ng is built without OpenSSL or WinZip-AES support, so no OpenSSL
+installation is required; zlib-ng is built with its native API and merged into
+the Lochfolk library. GoogleTest is taken from the system by default; with
+`-Dlochfolk_prefer_system_gtest=OFF` it is fetched instead (googletest v1.14.0).
+GoogleTest is only required when the tests are enabled.
 
 ### Quickstart
 
@@ -199,7 +203,9 @@ ctest --test-dir build --output-on-failure
 
 Static libraries are built by default; pass `-Dlochfolk_shared=ON` to build a
 shared library instead. Shared builds enable link-time optimization by default;
-pass `-Dlochfolk_enable_lto=OFF` to disable it.
+pass `-Dlochfolk_enable_lto=OFF` to disable it. The vendored minizip-ng and
+zlib-ng targets follow the same LTO setting, so shared builds optimize the whole
+library, dependencies included.
 
 ### Installing
 
@@ -211,10 +217,10 @@ Public headers are installed under `<prefix>/include/lochfolk/` and the library
 under `<prefix>/lib/` (on Windows the shared library is
 `<prefix>/bin/lochfolk.dll`).
 
-The static library embeds the vendored minizip-ng objects, so static consumers
-do not need a separate minizip-ng package. On Linux and macOS the system zlib
-still has to be linked (`-lz`); on Windows the zlib archive fetched by
-minizip-ng is embedded as well.
+The static library embeds the vendored minizip-ng and zlib-ng objects, so
+static consumers need neither package and no zlib library to link against. The
+shared library links the same static archives into `liblochfolk.so` /
+`lochfolk.dll`, so it has no zlib runtime dependency either.
 
 ### Options
 
@@ -230,6 +236,7 @@ minizip-ng is embedded as well.
 This library uses the following third party libraries:
 
 - [minizip-ng](https://github.com/zlib-ng/minizip-ng): For loading ZIP archive.
+- [zlib-ng](https://github.com/zlib-ng/zlib-ng): Compression backend used through minizip-ng.
 - [GoogleTest](https://github.com/google/googletest): For testing.
 
 ## License
